@@ -1,0 +1,14 @@
+@import "tailwindcss";
+
+:root {
+  /* This forces the variables to be white/black */
+  --background: #ffffff;
+  --foreground: #000000;
+  --font-playfair: "Playfair Display", serif;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-playfair), sans-serif;
+}
