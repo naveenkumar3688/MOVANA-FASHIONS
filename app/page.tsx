@@ -42,7 +42,8 @@ export default function Home() {
       
       {/* Hero Section */}
       <section className="bg-black text-white py-20 text-center px-4">
-        <h1 className="text-4xl md:text-6xl font-bold font-serif mb-4">MOVANA FASHIONS</h1>
+        <h1 className="text-4xl md:text-6xl font-bold font-serif mb-4">MOVANA Fashion
+        </h1>
         <p className="text-gray-300 text-lg mb-8 max-w-2xl mx-auto">
           Comfort meets Elegance. Discover our premium collection of Nighties & Essentials.
         </p>
