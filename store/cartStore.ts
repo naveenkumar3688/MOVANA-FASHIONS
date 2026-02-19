@@ -1,6 +1,6 @@
 import { create } from 'zustand';
+import { persist } from 'zustand/middleware'; // The magic memory tool!
 
-// 1. Define the shape of a single item
 type CartItem = {
   id: string;
   name: string;
@@ -9,11 +9,10 @@ type CartItem = {
   quantity: number;
 };
 
-// 2. Define the shape of the WHOLE store
 type CartState = {
-  items: CartItem[];      // We name this 'items' to match your Drawer!
+  items: CartItem[];
   isOpen: boolean;
-  toggleCart: () => void; // We explicitly list this so TS knows it exists
+  toggleCart: () => void;
   setIsOpen: (open: boolean) => void;
   addToCart: (product: any) => void;
   removeFromCart: (id: string) => void;
@@ -21,38 +20,44 @@ type CartState = {
   clearCart: () => void;
 };
 
-// 3. Create the store
-export const useCartStore = create<CartState>((set) => ({
-  items: [],              // Must be 'items' (not 'cart')
-  isOpen: false,
-  
-  toggleCart: () => set((state) => ({ isOpen: !state.isOpen })),
-  setIsOpen: (open) => set({ isOpen: open }),
-
-  addToCart: (product) => set((state) => {
-    // Check if item already exists
-    const existing = state.items.find((item) => item.id === product.id);
-    if (existing) {
-      return {
-        items: state.items.map((item) =>
-          item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
-        ),
-        isOpen: true,
-      };
+// We wrap the whole store in persist()
+export const useCartStore = create<CartState>()(
+  persist(
+    (set) => ({
+      items: [],
+      isOpen: false, // We don't save the drawer being open, just the items
+      
+      toggleCart: () => set((state) => ({ isOpen: !state.isOpen })),
+      setIsOpen: (open) => set({ isOpen: open }),
+      
+      addToCart: (product) => set((state) => {
+        const existing = state.items.find((item) => item.id === product.id);
+        if (existing) {
+          return {
+            items: state.items.map((item) =>
+              item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item
+            ),
+            isOpen: true,
+          };
+        }
+        return { items: [...state.items, { ...product, quantity: 1 }], isOpen: true };
+      }),
+      
+      removeFromCart: (id) => set((state) => ({ 
+        items: state.items.filter((item) => item.id !== id) 
+      })),
+      
+      updateQuantity: (id, qty) => set((state) => ({
+        items: state.items.map((item) => 
+          item.id === id ? { ...item, quantity: Math.max(1, qty) } : item
+        )
+      })),
+      
+      clearCart: () => set({ items: [] }),
+    }),
+    {
+      name: 'movana-cart-storage', // The secret name stored in the customer's browser
+      partialize: (state) => ({ items: state.items }), // ONLY save the items array, not the open/close state
     }
-    // Add new item
-    return { items: [...state.items, { ...product, quantity: 1 }], isOpen: true };
-  }),
-
-  removeFromCart: (id) => set((state) => ({ 
-    items: state.items.filter((item) => item.id !== id) 
-  })),
-
-  updateQuantity: (id, qty) => set((state) => ({
-    items: state.items.map((item) => 
-      item.id === id ? { ...item, quantity: Math.max(1, qty) } : item
-    )
-  })),
-
-  clearCart: () => set({ items: [] }),
-}));
+  )
+);
