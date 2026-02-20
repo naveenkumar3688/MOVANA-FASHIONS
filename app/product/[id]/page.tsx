@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation'; // 🚀 Added useRouter
 import { supabase } from '../../../lib/supabase';
 import AddToCartButton from '../../../components/AddtoCartButton';
 import { useCartStore } from '../../../store/cartStore';
@@ -9,6 +9,7 @@ import { Loader2, ShieldCheck, Truck, Zap } from 'lucide-react';
 
 export default function ProductPage() {
   const params = useParams();
+  const router = useRouter(); // 🚀 Initialized router for redirects
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState('L');
@@ -35,10 +36,20 @@ export default function ProductPage() {
     name: `${product.name} (Size: ${selectedSize})`
   };
 
-  const handleBuyNow = () => {
+  // 🚀 BRAND NEW SMART BUY BUTTON
+  const handleBuyNow = async () => {
+    // 1. Check if they are logged in!
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (!session) {
+      alert("Please log in to your account to place an order!");
+      router.push('/login'); // Sends them straight to the login page!
+      return; 
+    }
+
+    // 2. If logged in, open the cart!
     addToCart(productWithSize);
     setIsOpen(true);
-    // Note: We can add logic here to skip straight to the 'details' step if needed
   };
 
   return (
