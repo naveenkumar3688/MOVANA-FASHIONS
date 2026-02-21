@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Trash2, ShoppingCart, ArrowLeft, CreditCard } from 'lucide-react';
+import { X, Trash2, ShoppingCart, ArrowLeft, CreditCard, MapPin, Loader2 } from 'lucide-react'; // 🚀 Added MapPin and Loader2
 import { useCartStore } from '../store/cartStore';
 import { supabase } from '../lib/supabase'; 
 import { useRouter } from 'next/navigation'; 
@@ -9,22 +9,63 @@ import { useRouter } from 'next/navigation';
 export default function CartDrawer() {
   const { isOpen, setIsOpen, items, removeFromCart, updateQuantity, clearCart } = useCartStore();
   const [checkoutStep, setCheckoutStep] = useState<'cart' | 'details'>('cart');
+  
+  // 🚀 BRAND NEW STATE VARIABLES
   const [customerName, setCustomerName] = useState('');
-  const [pincode, setPincode] = useState('');
+  const [address, setAddress] = useState(''); // Replaced pincode with address
+  const [isLocating, setIsLocating] = useState(false); // Controls the loading spinner for GPS
+  
   const [loading, setLoading] = useState(false);
   const router = useRouter(); 
 
   const totalAmount = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
+  // 🌍 BRAND NEW: AUTO-LOCATE FUNCTION
+  const handleGetLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Your browser does not support location features.");
+      return;
+    }
+
+    setIsLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        try {
+          const { latitude, longitude } = position.coords;
+          // Use a free API to convert GPS coordinates into a real street address
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
+          const data = await res.json();
+          
+          if (data && data.display_name) {
+            setAddress(data.display_name); // Auto-fill the text box!
+          } else {
+            alert("Could not fetch the exact address. Please type it manually.");
+          }
+        } catch (error) {
+          console.error("Location Error:", error);
+          alert("Error finding your street. Please type your address manually.");
+        } finally {
+          setIsLocating(false);
+        }
+      },
+      (error) => {
+        console.error("GPS Error:", error);
+        alert("Please allow location permissions in your browser to use this feature.");
+        setIsLocating(false);
+      }
+    );
+  };
+
   const handleRazorpayPayment = async () => {
-    if (!customerName || !pincode) {
-      alert("Please enter details for delivery!");
+    // 🛑 Updated validation to check for address instead of pincode
+    if (!customerName || !address) {
+      alert("Please enter your name and complete address for delivery!");
       return;
     }
 
     setLoading(true);
     try {
-      // 🛑 1. THE LOGIN WALL
+      // 1. THE LOGIN WALL
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -35,7 +76,7 @@ export default function CartDrawer() {
         return; 
       }
 
-      // 🌐 2. THE SCRIPT FIX
+      // 2. THE SCRIPT FIX
       const loadScript = () => {
         return new Promise((resolve) => {
           const script = document.createElement('script');
@@ -53,7 +94,7 @@ export default function CartDrawer() {
         return;
       }
 
-      // 💳 3. CREATE THE ORDER
+      // 3. CREATE THE ORDER
       const res = await fetch('/api/razorpay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -62,7 +103,7 @@ export default function CartDrawer() {
       
       const data = await res.json();
 
-      // 🎉 4. OPEN THE POPUP
+      // 4. OPEN THE POPUP
       const options = {
         key: data.keyId,
         amount: totalAmount * 100,
@@ -72,6 +113,7 @@ export default function CartDrawer() {
         order_id: data.orderId,
         handler: function (response: any) {
           alert("Payment Successful! ID: " + response.razorpay_payment_id);
+          // TODO: Here is where we will eventually save the exact 'address' to your Supabase database!
           clearCart();
           setIsOpen(false);
           setCheckoutStep('cart');
@@ -97,7 +139,6 @@ export default function CartDrawer() {
 
   return (
     <div className="relative z-50">
-      {/* Overlay - Changed to full div tags to fix the JSX error! */}
       <div className="fixed inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsOpen(false)}></div>
       
       <div className="fixed right-0 top-0 h-full w-full sm:w-[420px] bg-white shadow-2xl flex flex-col">
@@ -117,7 +158,6 @@ export default function CartDrawer() {
               <div className="space-y-6">
                 {items.map((item) => (
                   <div key={item.id} className="flex gap-4 border-b pb-4">
-                    {/* Added the required 'alt' tag here! */}
                     <img src={item.image_url} alt={item.name} className="w-20 h-24 object-cover rounded shadow-sm" />
                     <div className="flex-1">
                       <h3 className="font-bold text-gray-900">{item.name}</h3>
@@ -143,10 +183,29 @@ export default function CartDrawer() {
                 <label className="block text-sm font-bold text-gray-700 mb-1">Full Name</label>
                 <input type="text" placeholder="John Doe" className="w-full border-2 border-gray-200 p-3 rounded-lg outline-none focus:border-black transition" value={customerName} onChange={e => setCustomerName(e.target.value)} />
               </div>
+              
+              {/* 🚀 BRAND NEW ADDRESS BOX WITH LOCATE BUTTON */}
               <div>
-                <label className="block text-sm font-bold text-gray-700 mb-1">Pincode</label>
-                <input type="text" placeholder="e.g. 600001" className="w-full border-2 border-gray-200 p-3 rounded-lg outline-none focus:border-black transition" value={pincode} onChange={e => setPincode(e.target.value)} />
+                <label className="block text-sm font-bold text-gray-700 mb-1">Complete Delivery Address</label>
+                <div className="relative">
+                  <textarea 
+                    placeholder="Enter your full door number, street, city, and state..." 
+                    className="w-full border-2 border-gray-200 p-3 rounded-lg outline-none focus:border-black transition min-h-[120px] resize-none pr-12" 
+                    value={address} 
+                    onChange={e => setAddress(e.target.value)} 
+                  />
+                  <button 
+                    type="button"
+                    onClick={handleGetLocation} 
+                    disabled={isLocating}
+                    title="Use my current location"
+                    className="absolute right-3 top-3 p-2 bg-black text-white hover:bg-gray-800 rounded-full transition shadow-md disabled:bg-gray-400"
+                  >
+                    {isLocating ? <Loader2 className="w-4 h-4 animate-spin" /> : <MapPin className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
+              
             </div>
           )}
         </div>
