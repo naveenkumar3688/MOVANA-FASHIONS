@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Trash2, ShoppingCart, ArrowLeft, CreditCard, MapPin, Loader2 } from 'lucide-react'; // 🚀 Added MapPin and Loader2
+import { X, Trash2, ShoppingCart, ArrowLeft, CreditCard, MapPin, Loader2 } from 'lucide-react';
 import { useCartStore } from '../store/cartStore';
 import { supabase } from '../lib/supabase'; 
 import { useRouter } from 'next/navigation'; 
@@ -10,17 +10,14 @@ export default function CartDrawer() {
   const { isOpen, setIsOpen, items, removeFromCart, updateQuantity, clearCart } = useCartStore();
   const [checkoutStep, setCheckoutStep] = useState<'cart' | 'details'>('cart');
   
-  // 🚀 BRAND NEW STATE VARIABLES
   const [customerName, setCustomerName] = useState('');
-  const [address, setAddress] = useState(''); // Replaced pincode with address
-  const [isLocating, setIsLocating] = useState(false); // Controls the loading spinner for GPS
-  
+  const [address, setAddress] = useState(''); 
+  const [isLocating, setIsLocating] = useState(false); 
   const [loading, setLoading] = useState(false);
   const router = useRouter(); 
 
   const totalAmount = items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
 
-  // 🌍 BRAND NEW: AUTO-LOCATE FUNCTION
   const handleGetLocation = () => {
     if (!navigator.geolocation) {
       alert("Your browser does not support location features.");
@@ -32,12 +29,11 @@ export default function CartDrawer() {
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
-          // Use a free API to convert GPS coordinates into a real street address
           const res = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`);
           const data = await res.json();
           
           if (data && data.display_name) {
-            setAddress(data.display_name); // Auto-fill the text box!
+            setAddress(data.display_name); 
           } else {
             alert("Could not fetch the exact address. Please type it manually.");
           }
@@ -57,7 +53,6 @@ export default function CartDrawer() {
   };
 
   const handleRazorpayPayment = async () => {
-    // 🛑 Updated validation to check for address instead of pincode
     if (!customerName || !address) {
       alert("Please enter your name and complete address for delivery!");
       return;
@@ -65,7 +60,6 @@ export default function CartDrawer() {
 
     setLoading(true);
     try {
-      // 1. THE LOGIN WALL
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -76,7 +70,6 @@ export default function CartDrawer() {
         return; 
       }
 
-      // 2. THE SCRIPT FIX
       const loadScript = () => {
         return new Promise((resolve) => {
           const script = document.createElement('script');
@@ -94,7 +87,6 @@ export default function CartDrawer() {
         return;
       }
 
-      // 3. CREATE THE ORDER
       const res = await fetch('/api/razorpay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -103,7 +95,6 @@ export default function CartDrawer() {
       
       const data = await res.json();
 
-      // 4. OPEN THE POPUP
       const options = {
         key: data.keyId,
         amount: totalAmount * 100,
@@ -111,12 +102,32 @@ export default function CartDrawer() {
         name: "MOVANA FASHIONS",
         description: "Premium Clothing Order",
         order_id: data.orderId,
-        handler: function (response: any) {
-          alert("Payment Successful! ID: " + response.razorpay_payment_id);
-          // TODO: Here is where we will eventually save the exact 'address' to your Supabase database!
-          clearCart();
-          setIsOpen(false);
-          setCheckoutStep('cart');
+        
+        // 🚀 BRAND NEW: THIS HAPPENS WHEN THE PAYMENT SUCCEEDS!
+        handler: async function (response: any) {
+          
+          // 1. Send all order details directly to your new Supabase table!
+          const { error } = await supabase.from('orders').insert({
+            customer_name: customerName,
+            customer_email: session.user.email,
+            address: address,
+            amount: totalAmount,
+            items: items, // This saves the entire cart (sizes, names, images, etc.)
+            payment_id: response.razorpay_payment_id,
+            status: 'Processing'
+          });
+
+          if (error) {
+            console.error("Supabase Save Error:", error);
+            alert("Payment worked, but we had trouble saving the order. Contact support with ID: " + response.razorpay_payment_id);
+          } else {
+            alert("Payment Successful! Order Placed! 🎉 ID: " + response.razorpay_payment_id);
+            clearCart();
+            setIsOpen(false);
+            setCheckoutStep('cart');
+            setAddress('');
+            setCustomerName('');
+          }
         },
         prefill: { 
           name: customerName,
@@ -184,7 +195,6 @@ export default function CartDrawer() {
                 <input type="text" placeholder="John Doe" className="w-full border-2 border-gray-200 p-3 rounded-lg outline-none focus:border-black transition" value={customerName} onChange={e => setCustomerName(e.target.value)} />
               </div>
               
-              {/* 🚀 BRAND NEW ADDRESS BOX WITH LOCATE BUTTON */}
               <div>
                 <label className="block text-sm font-bold text-gray-700 mb-1">Complete Delivery Address</label>
                 <div className="relative">
@@ -205,7 +215,6 @@ export default function CartDrawer() {
                   </button>
                 </div>
               </div>
-              
             </div>
           )}
         </div>
