@@ -3,9 +3,12 @@ import Razorpay from 'razorpay';
 
 export async function POST(request: Request) {
   try {
-    // 🚨 DIAGNOSTIC SCANNER: Check if Vercel is actually giving us the keys!
     const keyId = process.env.RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
+
+    // 🚨 SONAR PING: Ask Vercel to show us the NAMES of any keys it has that contain "RAZORPAY"
+    const allKeys = Object.keys(process.env);
+    const razorpayKeys = allKeys.filter(k => k.includes('RAZORPAY'));
 
     // If the vault is empty, immediately sound the alarm to the frontend!
     if (!keyId || !keySecret) {
