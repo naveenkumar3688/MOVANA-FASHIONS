@@ -60,6 +60,7 @@ export default function CartDrawer() {
 
     setLoading(true);
     try {
+      // 1. THE LOGIN WALL
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
@@ -70,6 +71,7 @@ export default function CartDrawer() {
         return; 
       }
 
+      // 2. LOAD RAZORPAY SCRIPT
       const loadScript = () => {
         return new Promise((resolve) => {
           const script = document.createElement('script');
@@ -82,19 +84,29 @@ export default function CartDrawer() {
 
       const isScriptLoaded = await loadScript();
       if (!isScriptLoaded) {
-        alert("Failed to load Razorpay. Please check your internet connection.");
+        alert("Failed to load Razorpay script. An adblocker or Brave Shields might be blocking it!");
         setLoading(false);
         return;
       }
 
+      // 3. CREATE THE ORDER ON VERCEL
       const res = await fetch('/api/razorpay', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: totalAmount }),
       });
       
+      // 🚨 TRUTH SERUM: If the Vercel backend fails, this tells us exactly why!
+      if (!res.ok) {
+        const errorText = await res.text();
+        alert(`Vercel Backend Error (${res.status}): ${errorText}`);
+        setLoading(false);
+        return;
+      }
+
       const data = await res.json();
 
+      // 4. OPEN RAZORPAY POPUP
       const options = {
         key: data.keyId,
         amount: totalAmount * 100,
@@ -103,23 +115,21 @@ export default function CartDrawer() {
         description: "Premium Clothing Order",
         order_id: data.orderId,
         
-        // 🚀 BRAND NEW: THIS HAPPENS WHEN THE PAYMENT SUCCEEDS!
         handler: async function (response: any) {
-          
-          // 1. Send all order details directly to your new Supabase table!
+          // 5. SAVE TO SUPABASE ORDERS TABLE
           const { error } = await supabase.from('orders').insert({
             customer_name: customerName,
             customer_email: session.user.email,
             address: address,
             amount: totalAmount,
-            items: items, // This saves the entire cart (sizes, names, images, etc.)
+            items: items, 
             payment_id: response.razorpay_payment_id,
             status: 'Processing'
           });
 
           if (error) {
             console.error("Supabase Save Error:", error);
-            alert("Payment worked, but we had trouble saving the order. Contact support with ID: " + response.razorpay_payment_id);
+            alert("Payment worked, but we had trouble saving the order. ID: " + response.razorpay_payment_id);
           } else {
             alert("Payment Successful! Order Placed! 🎉 ID: " + response.razorpay_payment_id);
             clearCart();
@@ -138,9 +148,11 @@ export default function CartDrawer() {
 
       const rzp = new (window as any).Razorpay(options);
       rzp.open();
-    } catch (err) {
-      console.error("Payment Error:", err);
-      alert("Payment failed to initialize. Please check your connection.");
+
+    } catch (err: any) {
+      console.error("Detailed Payment Error:", err);
+      // 🚨 TRUTH SERUM: Shows the exact network/browser block message!
+      alert("Network/Browser Error: " + err.message);
     } finally {
       setLoading(false);
     }
