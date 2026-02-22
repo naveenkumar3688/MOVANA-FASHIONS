@@ -10,7 +10,7 @@ export async function POST(request: Request) {
     // If the vault is empty, immediately sound the alarm to the frontend!
     if (!keyId || !keySecret) {
       return NextResponse.json({ 
-        error: `THE VAULT IS EMPTY! Key ID exists: ${!!keyId} | Secret exists: ${!!keySecret}` 
+        error: `THE VAULT IS EMPTY v3! The keys Vercel actually sees are: [${razorpayKeys.join(', ')}]` 
       }, { status: 500 });
     }
 
