@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic'; // 🚀 THE ULTIMATE CACHE BREAKER! FORCES LIVE VAULT ACCESS!
+
 import { NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
 
@@ -6,18 +8,12 @@ export async function POST(request: Request) {
     const keyId = process.env.RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
-    // 🚨 SONAR PING: Ask Vercel to show us the NAMES of any keys it has that contain "RAZORPAY"
-    const allKeys = Object.keys(process.env);
-    const razorpayKeys = allKeys.filter(k => k.includes('RAZORPAY'));
-
-    // If the vault is empty, immediately sound the alarm to the frontend!
     if (!keyId || !keySecret) {
       return NextResponse.json({ 
-        error: `THE VAULT IS EMPTY v3! The keys Vercel actually sees are: [${razorpayKeys.join(', ')}]` 
+        error: `THE VAULT IS EMPTY v4! Next.js froze the keys again!` 
       }, { status: 500 });
     }
 
-    // If keys exist, try to connect to Razorpay
     const razorpay = new Razorpay({
       key_id: keyId,
       key_secret: keySecret,
