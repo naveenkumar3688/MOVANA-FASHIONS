@@ -1,81 +1,95 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
-import { ShoppingCart, User, LogOut } from 'lucide-react';
-import { useCartStore } from '../store/cartStore';
-import { useEffect, useState } from 'react';
+import { ShoppingCart, Menu, X, LogOut, ChevronRight } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import { useRouter } from 'next/navigation';
 
-export default function Header() {
-  const { items, setIsOpen } = useCartStore();
-  const itemCount = items.reduce((total, item) => total + item.quantity, 0);
-  
-  // NEW: State to track if someone is logged in
-  const [user, setUser] = useState<any>(null);
+export default function Navbar() {
+  const [isOpen, setIsOpen] = useState(false);
+  const router = useRouter();
 
-  // NEW: Check Supabase to see if a customer is currently logged in
-  useEffect(() => {
-    // 1. Get the current session when the page loads
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
-    });
-
-    // 2. Listen for any logins or logouts in real-time
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // NEW: Logout function
+  // 🚪 LOGOUT FUNCTION
   const handleLogout = async () => {
     await supabase.auth.signOut();
-    alert("You have been logged out successfully!");
+    setIsOpen(false); // Close the menu
+    router.push('/login'); // Send them back to the login page
   };
 
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+    <>
+      {/* 🌟 MAIN TOP NAVIGATION BAR */}
+      <nav className="flex justify-between items-center p-4 sm:px-8 bg-white border-b border-gray-100 sticky top-0 z-40">
         
-        {/* LOGO */}
-        <Link href="/" className="font-serif font-bold text-2xl tracking-widest text-black">
+        {/* Your Brand Logo */}
+        <Link href="/" className="text-2xl font-extrabold tracking-widest uppercase text-black">
           MOVANA
         </Link>
         
-        {/* ICONS ON THE RIGHT */}
         <div className="flex items-center gap-6">
+          {/* Cart Icon (Keep your cart logic if you have a dynamic number here!) */}
+          <Link href="/cart" className="relative text-black hover:text-gray-600 transition">
+            <ShoppingCart className="w-6 h-6" />
+            <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full">
+              1
+            </span>
+          </Link>
           
-          {/* USER & LOGOUT SECTION */}
-          {user ? (
-            // IF LOGGED IN: Show Log Out button and a Green User Icon
-            <div className="flex items-center gap-4">
-              <button onClick={handleLogout} className="flex items-center gap-1 text-sm font-bold text-red-600 hover:text-red-700 transition">
-                <LogOut className="w-4 h-4" /> Log Out
-              </button>
-              <Link href="/profile" className="flex items-center justify-center transition hover:scale-110">
-                <User className="w-6 h-6 text-green-600" />
-              </Link>
-            </div>
-          ) : (
-            // IF NOT LOGGED IN: Show normal black Login Icon
-            <Link href="/login" className="flex items-center justify-center transition hover:scale-110">
-              <User className="w-6 h-6 text-black" />
-            </Link>
-          )}
-
-          {/* THE SHOPPING CART ICON */}
-          <button onClick={() => setIsOpen(true)} className="relative flex items-center justify-center transition hover:scale-110">
-            <ShoppingCart className="w-6 h-6 text-black" />
-            {itemCount > 0 && (
-              <span className="absolute -top-2 -right-2 bg-red-600 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center shadow-md border-2 border-white">
-                {itemCount}
-              </span>
-            )}
+          {/* 🍔 HAMBURGER BUTTON */}
+          <button onClick={() => setIsOpen(true)} className="text-black hover:text-gray-600 transition">
+            <Menu className="w-7 h-7" />
           </button>
-          
+        </div>
+      </nav>
+
+      {/* 🌑 DARK BACKGROUND OVERLAY (Clicking it closes the menu) */}
+      <div 
+        className={`fixed inset-0 bg-black/50 z-50 transition-opacity duration-300 ${isOpen ? 'opacity-100 pointer-events-auto' : 'opacity-0 pointer-events-none'}`} 
+        onClick={() => setIsOpen(false)} 
+      />
+      
+      {/* ➡️ RIGHT SIDE SLIDING DRAWER */}
+      <div className={`fixed top-0 right-0 h-full w-80 bg-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${isOpen ? 'translate-x-0' : 'translate-x-full'}`}>
+        
+        {/* Drawer Header */}
+        <div className="flex justify-between items-center p-6 border-b border-gray-100">
+          <span className="text-xl font-extrabold tracking-widest uppercase text-black">Menu</span>
+          <button onClick={() => setIsOpen(false)} className="p-2 bg-gray-50 rounded-full hover:bg-gray-200 transition">
+            <X className="w-5 h-5 text-black" />
+          </button>
+        </div>
+
+        {/* 👗 CATEGORY LINKS IN MENU */}
+        <div className="flex flex-col flex-1 py-4 overflow-y-auto">
+          <Link href="/womenswear" onClick={() => setIsOpen(false)} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors group">
+            <span className="font-bold uppercase text-sm tracking-widest text-gray-700 group-hover:text-black">Womenswear</span>
+            <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-black transition" />
+          </Link>
+          <Link href="/menswear" onClick={() => setIsOpen(false)} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors group">
+            <span className="font-bold uppercase text-sm tracking-widest text-gray-700 group-hover:text-black">Menswear</span>
+            <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-black transition" />
+          </Link>
+          <Link href="/kidswear" onClick={() => setIsOpen(false)} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors group">
+            <span className="font-bold uppercase text-sm tracking-widest text-gray-700 group-hover:text-black">Kidswear</span>
+            <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-black transition" />
+          </Link>
+          <Link href="/home-accessories" onClick={() => setIsOpen(false)} className="flex items-center justify-between px-6 py-4 hover:bg-gray-50 transition-colors group">
+            <span className="font-bold uppercase text-sm tracking-widest text-gray-700 group-hover:text-black">Home Accessories</span>
+            <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-black transition" />
+          </Link>
+        </div>
+
+        {/* 🚪 HIDDEN LOGOUT BUTTON AT THE BOTTOM */}
+        <div className="p-6 border-t border-gray-100 bg-gray-50">
+          <button 
+            onClick={handleLogout} 
+            className="w-full flex items-center justify-center gap-2 bg-black text-white py-4 rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-gray-800 transition-all shadow-md hover:shadow-xl"
+          >
+            <LogOut className="w-4 h-4" /> Log Out
+          </button>
         </div>
       </div>
-    </header>
+    </>
   );
 }
