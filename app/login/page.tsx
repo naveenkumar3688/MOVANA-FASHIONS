@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'next/navigation';
-import { User, Lock, Mail, Loader2 } from 'lucide-react';
+import { Lock, Mail, Loader2, ArrowRight } from 'lucide-react';
 
 export default function LoginPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -49,21 +49,31 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
-        <h2 className="text-center text-3xl font-extrabold font-serif text-gray-900">
-          {isLogin ? 'Sign in to your account' : 'Create your account'}
-        </h2>
+    <div className="min-h-screen bg-[#fafafa] flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
+      
+      {/* BRAND HEADER */}
+      <div className="sm:mx-auto sm:w-full sm:max-w-md text-center mb-8">
+        <h1 className="text-4xl font-extrabold tracking-[0.2em] text-black mb-2 uppercase">
+          Movana
+        </h1>
+        <p className="text-gray-500 tracking-widest text-xs uppercase">
+          Premium Essentials
+        </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-        <div className="bg-white py-8 px-4 shadow-xl border border-gray-100 sm:rounded-2xl sm:px-10">
+      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+        {/* LUXURY CARD DESIGN */}
+        <div className="bg-white py-10 px-6 shadow-[0_20px_50px_rgba(0,0,0,0.05)] sm:rounded-3xl sm:px-12 border border-gray-100">
           
+          <h2 className="text-center text-2xl font-semibold text-gray-900 mb-8 tracking-tight">
+            {isLogin ? 'Welcome Back' : 'Join the Club'}
+          </h2>
+
           <form className="space-y-6" onSubmit={handleAuth}>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Email address</label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Email address</label>
+              <div className="relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Mail className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
@@ -71,16 +81,16 @@ export default function LoginPage() {
                   required
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-black focus:border-black sm:text-sm outline-none"
+                  className="block w-full pl-11 pr-4 py-4 bg-gray-50 border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-black focus:border-black sm:text-sm outline-none transition-all"
                   placeholder="you@example.com"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Password</label>
-              <div className="mt-1 relative rounded-md shadow-sm">
-                <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <label className="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">Password</label>
+              <div className="relative rounded-md shadow-sm">
+                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                   <Lock className="h-5 w-5 text-gray-400" />
                 </div>
                 <input
@@ -88,7 +98,7 @@ export default function LoginPage() {
                   required
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="block w-full pl-10 pr-3 py-3 border border-gray-300 rounded-lg focus:ring-black focus:border-black sm:text-sm outline-none"
+                  className="block w-full pl-11 pr-4 py-4 bg-gray-50 border-transparent rounded-xl focus:bg-white focus:ring-2 focus:ring-black focus:border-black sm:text-sm outline-none transition-all"
                   placeholder="••••••••"
                 />
               </div>
@@ -97,25 +107,30 @@ export default function LoginPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-full shadow-md text-sm font-bold text-white bg-black hover:bg-gray-800 focus:outline-none transition disabled:bg-gray-400"
+              className="w-full flex justify-center items-center py-4 px-4 border border-transparent rounded-xl shadow-lg text-xs font-bold uppercase tracking-widest text-white bg-black hover:bg-gray-900 focus:outline-none transition-all disabled:bg-gray-300 hover:shadow-xl"
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (isLogin ? 'Sign In' : 'Create Account')}
+              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                <>
+                  {isLogin ? 'Sign In' : 'Create Account'}
+                  <ArrowRight className="ml-2 w-4 h-4" />
+                </>
+              )}
             </button>
           </form>
 
-          <div className="mt-6">
+          <div className="mt-8">
             <div className="relative">
-              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-300" /></div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-white text-gray-500">Or continue with</span>
+              <div className="absolute inset-0 flex items-center"><div className="w-full border-t border-gray-200" /></div>
+              <div className="relative flex justify-center text-xs uppercase tracking-widest">
+                <span className="px-4 bg-white text-gray-400">Or Continue With</span>
               </div>
             </div>
 
-            {/* 🚀 BRAND NEW: GOOGLE BUTTON */}
-            <div className="mt-6">
+            {/* 🚀 GOOGLE BUTTON - PREMIUM UPGRADE */}
+            <div className="mt-8">
               <button
                 onClick={handleGoogleLogin}
-                className="w-full flex justify-center items-center gap-3 py-3 px-4 border border-gray-300 rounded-full shadow-sm text-sm font-bold text-gray-700 bg-white hover:bg-gray-50 focus:outline-none transition"
+                className="w-full flex justify-center items-center gap-3 py-4 px-4 border-2 border-gray-100 rounded-xl shadow-sm text-sm font-semibold text-gray-700 bg-white hover:border-gray-300 hover:bg-gray-50 focus:outline-none transition-all"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path fill="currentColor" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" />
@@ -127,12 +142,15 @@ export default function LoginPage() {
               </button>
             </div>
 
-            <div className="mt-6 text-center">
+            <div className="mt-8 text-center">
               <button
                 onClick={() => setIsLogin(!isLogin)}
-                className="font-medium text-blue-600 hover:text-blue-500"
+                className="text-sm font-medium text-gray-500 hover:text-black transition-colors"
               >
-                {isLogin ? "Don't have an account? Sign up" : "Already have an account? Sign in"}
+                {isLogin ? "Don't have an account? " : "Already have an account? "}
+                <span className="font-bold underline decoration-2 underline-offset-4">
+                  {isLogin ? 'Sign up' : 'Sign in'}
+                </span>
               </button>
             </div>
           </div>
