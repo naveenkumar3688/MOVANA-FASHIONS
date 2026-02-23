@@ -30,7 +30,7 @@ export default function MenswearPage() {
     <div className="min-h-screen bg-[#fafafa] font-sans pb-20">
       {/* HEADER */}
       <div className="bg-black text-white py-16 px-4 text-center">
-        <h1 className="text-4xl sm:text-5xl font-extrabold uppercase tracking-widest mb-4">Womenswear</h1>
+        <h1 className="text-4xl sm:text-5xl font-extrabold uppercase tracking-widest mb-4">"Menswear"</h1>
         <p className="text-gray-400 tracking-wide uppercase text-sm">Premium Nighties & Innerwear</p>
       </div>
 
@@ -42,7 +42,7 @@ export default function MenswearPage() {
         {loading ? (
           <div className="text-center py-20 text-gray-500 font-bold uppercase tracking-widest">Loading Collection...</div>
         ) : products.length === 0 ? (
-          <div className="text-center py-20 text-gray-500 text-lg">No products found in Womenswear yet.</div>
+          <div className="text-center py-20 text-gray-500 text-lg">No products found in Menswear yet.</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
             {products.map((product) => (
