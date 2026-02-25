@@ -49,9 +49,11 @@ export default function Home() {
 
       {/* 🌟 PREMIUM HERO SECTION */}
       <div className="relative bg-black text-white py-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
+
+        {/* 🛠️ UPDATED IMAGE URL IS HERE */}
         <div 
           className="absolute inset-0 opacity-40 bg-cover bg-center" 
-          style={{ backgroundImage: `url('https://bdhmreseputrwkjqvajn.supabase.co/storage/v1/object/public/product-images/img%203.png')` }}
+          style={{ backgroundImage: `url('https://i.postimg.cc/8z76r3Y3/image-7.png')` }}
         />
         
         <div className="relative max-w-7xl mx-auto text-center flex flex-col items-center z-10">
@@ -62,6 +64,7 @@ export default function Home() {
             Discover our premium collection of nighties, essential innerwear, and ultra-soft home accessories.
           </p>
           
+          {/* 🔍 LIVE SEARCH BAR */}
           <div className="relative w-full max-w-2xl mx-auto mb-10">
             <input
               type="text"
@@ -144,6 +147,7 @@ export default function Home() {
           </div>
         ) : (
           <>
+            {/* Category Filter Buttons */}
             <div className="flex flex-wrap justify-center gap-4 mb-12">
               <button
                 key="All"
@@ -167,6 +171,7 @@ export default function Home() {
               ))}
             </div>
 
+            {/* Product Grid */}
             {filteredProducts.length === 0 ? (
               <p className="text-center text-gray-500 py-10 text-lg">No products found matching your search.</p>
             ) : (

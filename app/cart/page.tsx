@@ -2,58 +2,150 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Trash2, ShieldCheck, ArrowRight, Truck } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { Trash2, ShieldCheck, ArrowRight, Truck, Loader2 } from 'lucide-react';
+import { supabase } from '../../lib/supabase';
 
 export default function CartPage() {
-  // 🛒 We are using dummy data here so you can see it work! 
-  // Later, we will connect this to your actual AddToCart logic.
-  const [cartItems, setCartItems] = useState([
-    { id: 1, name: 'Premium Cotton Nighty', price: 499, quantity: 4, category: 'Womenswear', image_url: 'https://images.unsplash.com/photo-1515347619253-12fb1817dd48?w=500&q=80' }
-  ]);
-
+  const [cartItems, setCartItems] = useState<any[]>([]);
   const [pincode, setPincode] = useState('');
+  const [address, setAddress] = useState(''); // Added so we can save it to Supabase!
   const [selectedCourier, setSelectedCourier] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
+  const router = useRouter();
 
-  // 🧮 CALCULATIONS
+  // 🔄 1. LOAD THE REAL CART ITEMS ON PAGE LOAD
+  useEffect(() => {
+    const savedCart = localStorage.getItem('cart');
+    if (savedCart) {
+      setCartItems(JSON.parse(savedCart));
+    }
+  }, []);
+
+  // 🧮 2. THE MATH & MEGA OFFER LOGIC
   const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
   const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  
-  // Weight Logic: Assuming 1 item = 250g (0.25kg)
-  const totalWeightKg = totalItems * 0.25;
+  const totalWeightKg = totalItems * 0.25; // Assuming 250g per item
   const isOver1Kg = totalWeightKg > 1;
 
-  // Tamil Nadu Pincode starts with '6'
   const isTamilNadu = pincode.startsWith('6') && pincode.length === 6;
   const isOtherState = pincode.length === 6 && !pincode.startsWith('6');
 
-  // ✨ MEGA OFFER LOGIC: 4 Nighties @ 999
-  const nightyCount = cartItems.filter(item => item.category === 'Womenswear').reduce((sum, item) => sum + item.quantity, 0);
+  const nightyCount = cartItems.filter(item => item.category === 'Womenswear' || item.name.toLowerCase().includes('nighty')).reduce((sum, item) => sum + item.quantity, 0);
   const megaOfferActive = nightyCount >= 4;
   
-  // Calculate the exact discount needed to make 4 nighties cost 999
-  // (Assuming standard price is 499. 4 * 499 = 1996. 1996 - 999 = 997 Discount)
-  const standardPriceForFour = cartItems.find(i => i.category === 'Womenswear')?.price || 499;
+  const standardPriceForFour = cartItems.find(i => i.category === 'Womenswear' || i.name.toLowerCase().includes('nighty'))?.price || 499;
   const megaOfferDiscount = megaOfferActive ? ((standardPriceForFour * 4) - 999) : 0;
 
-  // 📦 SHIPPING LOGIC
+  // 📦 3. SHIPPING LOGIC
   let shippingCost = 0;
   if (megaOfferActive) {
-    shippingCost = 0; // FREE Delivery for Mega Offer!
+    shippingCost = 0; 
   } else if (selectedCourier === 'ST Courier') {
     shippingCost = isOver1Kg ? 100 : 50;
   } else if (selectedCourier === 'India Post TN') {
-    shippingCost = 60; // Flat rate within TN
+    shippingCost = 60; 
   } else if (selectedCourier === 'India Post National') {
-    shippingCost = 100; // Flat rate national
+    shippingCost = 100; 
   } else if (selectedCourier === 'Delhivery') {
-    shippingCost = 130; // Flat premium national rate
+    shippingCost = 130; 
   }
 
   const finalTotal = subtotal - megaOfferDiscount + shippingCost;
 
-  // Function to remove item
+  // 🗑️ 4. REMOVE ITEM FROM CART
   const removeItem = (id: number) => {
-    setCartItems(cartItems.filter(item => item.id !== id));
+    const updatedCart = cartItems.filter(item => item.id !== id);
+    setCartItems(updatedCart);
+    localStorage.setItem('cart', JSON.stringify(updatedCart)); // Save changes to local storage
+  };
+
+  // 🚀 5. RAZORPAY & SUPABASE CHECKOUT
+  const initializeRazorpay = () => {
+    return new Promise((resolve) => {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.body.appendChild(script);
+    });
+  };
+
+  const handlePayment = async () => {
+    if (!address || pincode.length !== 6) {
+      alert("Please enter your full address and a valid pincode.");
+      return;
+    }
+
+    setIsProcessing(true);
+    const res = await initializeRazorpay();
+
+    if (!res) {
+      alert('Razorpay failed to load. Please check your internet connection.');
+      setIsProcessing(false);
+      return;
+    }
+
+    // Get Order ID from your backend
+    const data = await fetch('/api/create-order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ amount: finalTotal }),
+    }).then((t) => t.json());
+
+    if (!data.orderId) {
+      alert('Server error. Could not connect to payment gateway.');
+      setIsProcessing(false);
+      return;
+    }
+
+    const options = {
+      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+      name: 'MOVANA FASHIONS',
+      currency: 'INR',
+      amount: finalTotal * 100,
+      order_id: data.orderId,
+      description: 'Premium Essentials',
+      theme: { color: '#000000' },
+      handler: async function (response: any) {
+        
+        // 🎉 PAYMENT SUCCESSFUL! NOW SAVE TO SUPABASE!
+        const { error } = await supabase.from('orders').insert([{
+          customer_name: 'Guest Customer', // Update this later when you add user profiles!
+          customer_email: 'customer@example.com',
+          address: `${address}, Pincode: ${pincode}, Courier: ${selectedCourier || 'Free Offer Delivery'}`,
+          amount: finalTotal,
+          items: cartItems, // Saves the whole cart as JSONB
+          payment_id: response.razorpay_payment_id,
+          status: 'Paid & Processing'
+        }]);
+
+        if (error) {
+          console.error("Supabase Error:", error);
+          alert("Payment successful, but we had trouble saving the order. Please contact support.");
+        } else {
+          localStorage.removeItem('cart'); // Clear the cart
+          setCartItems([]);
+          alert('✨ Payment Successful! Your premium essentials are on the way.');
+          router.push('/'); // Send them back to the homepage
+        }
+      },
+      prefill: {
+        name: 'Guest Customer',
+        email: 'hello@movana.in',
+        contact: '9999999999',
+      },
+    };
+
+    const paymentObject = new (window as any).Razorpay(options);
+    paymentObject.open();
+    
+    paymentObject.on('payment.failed', function () {
+      alert('Payment failed or cancelled.');
+      setIsProcessing(false);
+    });
+    
+    setIsProcessing(false);
   };
 
   return (
@@ -123,8 +215,18 @@ export default function CartPage() {
                 )}
               </div>
 
-              {/* PINCODE & SHIPPING ENGINE */}
+              {/* ADDRESS, PINCODE & SHIPPING ENGINE */}
               <div className="mb-6 border-t border-b py-6">
+                
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Full Delivery Address</label>
+                <textarea 
+                  rows={2}
+                  placeholder="House No, Street, Landmark..." 
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-black transition mb-4 text-sm" 
+                />
+
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Delivery Pincode</label>
                 <input 
                   type="text" 
@@ -133,7 +235,7 @@ export default function CartPage() {
                   value={pincode}
                   onChange={(e) => {
                     setPincode(e.target.value);
-                    setSelectedCourier(''); // Reset courier when pincode changes
+                    setSelectedCourier(''); 
                   }}
                   className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-black transition mb-4 text-center tracking-widest font-bold text-lg" 
                 />
@@ -199,15 +301,20 @@ export default function CartPage() {
               </div>
 
               <button 
-                disabled={!megaOfferActive && (!selectedCourier || pincode.length !== 6)}
+                onClick={handlePayment}
+                disabled={(!megaOfferActive && (!selectedCourier || pincode.length !== 6)) || isProcessing || !address}
                 className="w-full flex justify-center items-center gap-2 bg-black text-white py-4 rounded-xl font-bold uppercase tracking-widest text-sm hover:bg-gray-800 transition shadow-lg disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
-                Proceed to Checkout <ShieldCheck className="w-5 h-5" />
+                {isProcessing ? (
+                  <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</>
+                ) : (
+                  <><ShieldCheck className="w-5 h-5" /> Pay Securely</>
+                )}
               </button>
               
-              {(!megaOfferActive && (!selectedCourier || pincode.length !== 6)) && (
+              {(!megaOfferActive && (!selectedCourier || pincode.length !== 6 || !address)) && (
                 <p className="text-center text-[10px] text-red-500 uppercase tracking-widest mt-3 font-bold">
-                  *Please enter a valid Pincode and select a courier to proceed.
+                  *Please enter your full address, valid pincode, and select a courier.
                 </p>
               )}
 
