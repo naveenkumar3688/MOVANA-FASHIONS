@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
+import AddToCartButton from '../components/AddtoCartButton';
 import { Search, ArrowRight, ShieldCheck, Truck, Star } from 'lucide-react';
 
 export default function Home() {
@@ -25,10 +26,8 @@ export default function Home() {
     fetchProducts();
   }, []);
 
-  // 2. Automatically generate filter categories
   const categories = ['All', ...Array.from(new Set(allProducts.map(p => p.category || 'Other')))];
 
-  // 3. Filter products by Category AND Search Bar
   const filteredProducts = allProducts.filter(p => {
     const matchesCategory = activeCategory === 'All' || p.category === activeCategory;
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -36,7 +35,6 @@ export default function Home() {
     return matchesCategory && matchesSearch;
   });
 
-  // 4. Smooth Scroll Function
   const scrollToProducts = () => {
     document.getElementById('products-section')?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -51,7 +49,6 @@ export default function Home() {
 
       {/* 🌟 PREMIUM HERO SECTION */}
       <div className="relative bg-black text-white py-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
-
         <div 
           className="absolute inset-0 opacity-40 bg-cover bg-center" 
           style={{ backgroundImage: `url('https://bdhmreseputrwkjqvajn.supabase.co/storage/v1/object/public/product-images/img%203.png')` }}
@@ -65,7 +62,6 @@ export default function Home() {
             Discover our premium collection of nighties, essential innerwear, and ultra-soft home accessories.
           </p>
           
-          {/* 🔍 LIVE SEARCH BAR */}
           <div className="relative w-full max-w-2xl mx-auto mb-10">
             <input
               type="text"
@@ -148,7 +144,6 @@ export default function Home() {
           </div>
         ) : (
           <>
-            {/* Category Filter Buttons */}
             <div className="flex flex-wrap justify-center gap-4 mb-12">
               <button
                 key="All"
@@ -172,7 +167,6 @@ export default function Home() {
               ))}
             </div>
 
-            {/* Product Grid */}
             {filteredProducts.length === 0 ? (
               <p className="text-center text-gray-500 py-10 text-lg">No products found matching your search.</p>
             ) : (
@@ -203,15 +197,20 @@ export default function Home() {
                         </p>
                       </Link>
                       
-                      {/* 🚀 THE NEW "BUY NOW" BUTTON SECTION */}
-                      <div className="flex items-center justify-between mt-auto pt-6 border-t border-gray-50">
-                        <span className="text-xl font-bold text-black">₹{product.price}</span>
-                        <Link 
-                          href={`/product/${product.id}`}
-                          className="bg-black text-white px-6 py-2.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest hover:bg-gray-800 hover:shadow-lg transition-all"
-                        >
-                          Buy Now
-                        </Link>
+                      {/* 🚀 THE NEW DUAL-BUTTON SECTION */}
+                      <div className="mt-auto pt-6 border-t border-gray-50">
+                        <div className="text-2xl font-black text-black mb-4">₹{product.price}</div>
+                        <div className="flex gap-2">
+                          <div className="flex-1">
+                            <AddToCartButton product={product} />
+                          </div>
+                          <Link 
+                            href={`/product/${product.id}`}
+                            className="flex-1 bg-black text-white flex items-center justify-center py-2.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-gray-800 hover:shadow-lg transition-all"
+                          >
+                            Buy Now
+                          </Link>
+                        </div>
                       </div>
 
                     </div>
