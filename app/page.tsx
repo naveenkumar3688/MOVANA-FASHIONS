@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
-import AddToCartButton from '../components/AddtoCartButton';
 import { Search, ArrowRight, ShieldCheck, Truck, Star } from 'lucide-react';
 
 export default function Home() {
@@ -53,7 +52,6 @@ export default function Home() {
       {/* 🌟 PREMIUM HERO SECTION */}
       <div className="relative bg-black text-white py-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
 
-        {/* 🛠️ FIXED BUG: Using inline styles with the permanent Public URL */}
         <div 
           className="absolute inset-0 opacity-40 bg-cover bg-center" 
           style={{ backgroundImage: `url('https://bdhmreseputrwkjqvajn.supabase.co/storage/v1/object/public/product-images/img%203.png')` }}
@@ -205,12 +203,17 @@ export default function Home() {
                         </p>
                       </Link>
                       
+                      {/* 🚀 THE NEW "BUY NOW" BUTTON SECTION */}
                       <div className="flex items-center justify-between mt-auto pt-6 border-t border-gray-50">
-                        <span className="text-xl font-bold">₹{product.price}</span>
-                        <div className="w-32">
-                          <AddToCartButton product={product} />
-                        </div>
+                        <span className="text-xl font-bold text-black">₹{product.price}</span>
+                        <Link 
+                          href={`/product/${product.id}`}
+                          className="bg-black text-white px-6 py-2.5 rounded-full text-[10px] font-extrabold uppercase tracking-widest hover:bg-gray-800 hover:shadow-lg transition-all"
+                        >
+                          Buy Now
+                        </Link>
                       </div>
+
                     </div>
                   </div>
                 ))}
