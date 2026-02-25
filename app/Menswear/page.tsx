@@ -12,11 +12,11 @@ export default function MenswearPage() {
 
   useEffect(() => {
     async function fetchMenswear() {
-      // 🚨 Notice the .eq() here! It ONLY fetches Womenswear!
+      // 🚨 Exact match for Menswear!
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .ilike('category', '%Men%'); // Looks for "Womenswear" or "Women"
+        .eq('category', 'Menswear'); 
       
       if (!error && data) {
         setProducts(data);
@@ -30,8 +30,8 @@ export default function MenswearPage() {
     <div className="min-h-screen bg-[#fafafa] font-sans pb-20">
       {/* HEADER */}
       <div className="bg-black text-white py-16 px-4 text-center">
-        <h1 className="text-4xl sm:text-5xl font-extrabold uppercase tracking-widest mb-4">"Menswear"</h1>
-        <p className="text-gray-400 tracking-wide uppercase text-sm">Premium Nighties & Innerwear</p>
+        <h1 className="text-4xl sm:text-5xl font-extrabold uppercase tracking-widest mb-4">Menswear</h1>
+        <p className="text-gray-400 tracking-wide uppercase text-sm">Premium Essentials & Innerwear</p>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
