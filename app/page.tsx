@@ -52,8 +52,8 @@ export default function Home() {
 
       {/* 🌟 PREMIUM HERO SECTION */}
       <div className="relative bg-black text-white py-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
-        <div className="absolute inset-0 opacity-40 bg-[url('https://images.unsplash.com/photo-1618932260643-eee4a2f652a6?q=80&w=2000&auto=format&fit=crop')] bg-cover bg-center" />
-        
+
+        <div className="absolute inset-0 opacity-40 bg-[url('https://bdhmreseputrwkjqvajn.supabase.co/storage/v1/object/sign/product-images/img%203.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtl eV8zYzdlMjMxOC1kNjkxLTQ4YWEtYjY3Yi0zZjA2MDgwODdhYzUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJwcm9kdWN0LWltYWdlcy9pbWcgMy5wbmciLCJpYXQiOjE3NzE0MTc4OTYsImV4cCI6MTc3NDAwOTg5Nn0.6QXH9rxyPFU77iv4l30e8XIN6zQU9C1_1ALeRWkc8FM')]" />
         <div className="relative max-w-7xl mx-auto text-center flex flex-col items-center z-10">
           <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight mb-6 uppercase">
             Comfort Meets <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-400 to-white">Luxury</span>
