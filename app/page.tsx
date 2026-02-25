@@ -10,7 +10,7 @@ export default function Home() {
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeCategory, setActiveCategory] = useState('All');
-  const [searchQuery, setSearchQuery] = useState(''); // 🚀 NEW: Search Bar State!
+  const [searchQuery, setSearchQuery] = useState('');
 
   // 1. Fetch products when the page loads
   useEffect(() => {
@@ -53,7 +53,12 @@ export default function Home() {
       {/* 🌟 PREMIUM HERO SECTION */}
       <div className="relative bg-black text-white py-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
 
-        <div className="absolute inset-0 opacity-40 bg-[url('https://bdhmreseputrwkjqvajn.supabase.co/storage/v1/object/sign/product-images/img%203.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtl eV8zYzdlMjMxOC1kNjkxLTQ4YWEtYjY3Yi0zZjA2MDgwODdhYzUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJwcm9kdWN0LWltYWdlcy9pbWcgMy5wbmciLCJpYXQiOjE3NzE0MTc4OTYsImV4cCI6MTc3NDAwOTg5Nn0.6QXH9rxyPFU77iv4l30e8XIN6zQU9C1_1ALeRWkc8FM')]" />
+        {/* 🛠️ FIXED BUG: Using inline styles with the permanent Public URL */}
+        <div 
+          className="absolute inset-0 opacity-40 bg-cover bg-center" 
+          style={{ backgroundImage: `url('https://bdhmreseputrwkjqvajn.supabase.co/storage/v1/object/public/product-images/img%203.png')` }}
+        />
+        
         <div className="relative max-w-7xl mx-auto text-center flex flex-col items-center z-10">
           <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight mb-6 uppercase">
             Comfort Meets <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-400 to-white">Luxury</span>
@@ -69,7 +74,7 @@ export default function Home() {
               value={searchQuery}
               onChange={(e) => {
                 setSearchQuery(e.target.value);
-                scrollToProducts(); // Auto-scrolls down when they start typing!
+                scrollToProducts();
               }}
               placeholder="Search for nighties, towels, innerwear..."
               className="w-full py-5 pl-14 pr-6 text-gray-900 bg-white/95 backdrop-blur-sm border-2 border-transparent rounded-full focus:outline-none focus:border-white focus:bg-white transition-all shadow-2xl text-lg"
