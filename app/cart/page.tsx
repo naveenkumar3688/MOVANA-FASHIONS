@@ -117,17 +117,17 @@ export default function CartPage() {
   };
 
   const handlePayment = async () => {
-    // 🔒 1. COMPULSORY LOGIN CHECK BEFORE ANYTHING ELSE!
+    // 🔒 COMPULSORY LOGIN CHECK BEFORE ANYTHING ELSE!
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       alert("Please log in to your account to complete your purchase!");
-      router.push('/login'); // Send them to login page
+      router.push('/login'); 
       return;
     }
 
-    const customerEmail = session.user.email; // Grab their real email!
+    const customerEmail = session.user.email; 
 
-    // 2. Normal Validations
+    // Validations
     if (!address) { alert("Please enter your full delivery address."); return; }
     if (pincode.length !== 6) { alert("Please enter a valid 6-digit Pincode."); return; }
     if (!selectedCourier && !megaOfferActive) { alert("Please select a delivery partner (ST Courier, India Post, etc.)."); return; }
@@ -172,8 +172,8 @@ export default function CartPage() {
           const courierToSave = megaOfferActive && !selectedCourier ? 'Free Offer Delivery' : selectedCourier;
 
           const { error } = await supabase.from('orders').insert([{
-            customer_name: 'Customer', // Can update this later if you add names to profiles!
-            customer_email: customerEmail, // 🧾 SAVING THEIR REAL EMAIL TO THE DATABASE
+            customer_name: 'Customer', 
+            customer_email: customerEmail, 
             address: `${address}, Pincode: ${pincode}, Courier: ${courierToSave}`,
             amount: finalTotal,
             items: cartItems, 
@@ -185,15 +185,26 @@ export default function CartPage() {
             console.error("Supabase Error:", error);
             alert("Payment successful, but we had trouble saving the order details. Please contact support.");
           } else {
+            
+            // 🚀 BRAND NEW: Save the exact order details temporarily for the WhatsApp Success Page!
+            localStorage.setItem('lastOrder', JSON.stringify({
+              paymentId: paymentResponse.razorpay_payment_id,
+              address: address,
+              pincode: pincode,
+              courier: courierToSave,
+              items: cartItems,
+              total: finalTotal
+            }));
+
             clearCart(); 
-            alert('✨ Payment Successful! Your premium essentials are on the way.');
+            // Send them directly to the new Digital Receipt / WhatsApp page!
             window.location.href = `/success?payment_id=${paymentResponse.razorpay_payment_id}`; 
           }
         },
         prefill: {
           name: 'Customer',
-          email: customerEmail, // 🧾 GIVING THEIR REAL EMAIL TO RAZORPAY FOR THE BILL!
-          contact: '', // Can be made dynamic later
+          email: customerEmail, 
+          contact: '', 
         },
       };
 
