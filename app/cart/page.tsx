@@ -8,17 +8,15 @@ import { supabase } from '../../lib/supabase';
 import { useCart } from '../../context/CartContext';
 
 export default function CartPage() {
-  // 🛡️ SAFETY SHIELD 1: Give default empty arrays/functions in case context is still loading
   const { cartItems = [], removeItem = () => {}, clearCart = () => {} } = useCart() || {}; 
   
   const [pincode, setPincode] = useState('');
   const [address, setAddress] = useState(''); 
   const [selectedCourier, setSelectedCourier] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isMounted, setIsMounted] = useState(false); // 🛡️ SAFETY SHIELD 2: Hydration Fix
+  const [isMounted, setIsMounted] = useState(false); 
   const router = useRouter();
 
-  // Wait until the page fully loads before showing the cart to prevent Next.js crashes
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -32,17 +30,17 @@ export default function CartPage() {
   const isTamilNadu = pincode.startsWith('6') && pincode.length === 6;
   const isOtherState = pincode.length === 6 && !pincode.startsWith('6');
 
-  // Check for womenswear/nighties safely
-  const nightyCount = cartItems.filter((item: any) => 
-    item?.category === 'Womenswear' || item?.name?.toLowerCase().includes('nighty')
-  ).reduce((sum: any, item: any) => sum + item.quantity, 0);
-  
+  // 🧠 SMARTER NIGHTY DETECTOR: Checks if 'night' or 'womenswear' is anywhere in name or category
+  const isNighty = (item: any) => {
+    const nameMatch = item?.name?.toLowerCase().includes('night');
+    const catMatch = item?.category?.toLowerCase().includes('night') || item?.category?.toLowerCase().includes('women');
+    return nameMatch || catMatch;
+  };
+
+  const nightyCount = cartItems.filter(isNighty).reduce((sum: any, item: any) => sum + item.quantity, 0);
   const megaOfferActive = nightyCount >= 4;
   
-  const standardPriceForFour = cartItems.find((i: any) => 
-    i?.category === 'Womenswear' || i?.name?.toLowerCase().includes('nighty')
-  )?.price || 499;
-  
+  const standardPriceForFour = cartItems.find(isNighty)?.price || 499;
   const megaOfferDiscount = megaOfferActive ? ((standardPriceForFour * 4) - 999) : 0;
 
   // 📦 SHIPPING LOGIC
@@ -59,7 +57,6 @@ export default function CartPage() {
     shippingCost = 130; 
   }
 
-  // Ensure total never goes negative
   const finalTotal = Math.max(0, subtotal - megaOfferDiscount + shippingCost);
 
   // 🚀 RAZORPAY & SUPABASE CHECKOUT
@@ -89,15 +86,16 @@ export default function CartPage() {
     }
 
     try {
-      // Get Order ID from your backend
-      const data = await fetch('/api/create-order', {
+      const response = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: finalTotal }),
-      }).then((t) => t.json());
+      });
+
+      const data = await response.json();
 
       if (!data.orderId) {
-        alert('Server error. Could not connect to payment gateway.');
+        alert('Server error: Make sure your Razorpay keys are safely added to Vercel!');
         setIsProcessing(false);
         return;
       }
@@ -110,16 +108,14 @@ export default function CartPage() {
         order_id: data.orderId,
         description: 'Premium Essentials',
         theme: { color: '#000000' },
-        handler: async function (response: any) {
-          
-          // 🎉 PAYMENT SUCCESSFUL! NOW SAVE TO SUPABASE!
+        handler: async function (paymentResponse: any) {
           const { error } = await supabase.from('orders').insert([{
             customer_name: 'Guest Customer', 
             customer_email: 'hello@movana.in',
             address: `${address}, Pincode: ${pincode}, Courier: ${selectedCourier || 'Free Offer Delivery'}`,
             amount: finalTotal,
             items: cartItems, 
-            payment_id: response.razorpay_payment_id,
+            payment_id: paymentResponse.razorpay_payment_id,
             status: 'Paid & Processing'
           }]);
 
@@ -127,7 +123,7 @@ export default function CartPage() {
             console.error("Supabase Error:", error);
             alert("Payment successful, but we had trouble saving the order. Please contact support.");
           } else {
-            clearCart(); // Safely clear using context
+            clearCart(); 
             alert('✨ Payment Successful! Your premium essentials are on the way.');
             router.push('/'); 
           }
@@ -154,7 +150,6 @@ export default function CartPage() {
     }
   };
 
-  // 🛡️ If the page hasn't mounted yet, show a clean loading spinner instead of crashing!
   if (!isMounted) {
     return (
       <div className="min-h-screen bg-[#fafafa] flex flex-col items-center justify-center">
@@ -166,8 +161,6 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-[#fafafa] font-sans pb-20">
-      
-      {/* HEADER */}
       <div className="bg-black text-white py-12 px-4 text-center">
         <h1 className="text-3xl sm:text-4xl font-extrabold uppercase tracking-widest mb-2">Shopping Cart</h1>
         <p className="text-gray-400 tracking-widest uppercase text-xs">Secure Checkout</p>
@@ -183,8 +176,6 @@ export default function CartPage() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-            
-            {/* LEFT COLUMN: ITEMS */}
             <div className="lg:col-span-2 space-y-6">
               {cartItems.map((item: any) => (
                 <div key={item.id} className="flex gap-6 p-6 bg-white rounded-3xl shadow-sm border border-gray-100">
@@ -216,7 +207,6 @@ export default function CartPage() {
               ))}
             </div>
 
-            {/* RIGHT COLUMN: SUMMARY & SHIPPING */}
             <div className="bg-white p-8 rounded-3xl shadow-lg border border-gray-100 h-fit">
               <h2 className="text-lg font-bold uppercase tracking-widest mb-6 border-b pb-4">Order Summary</h2>
               
@@ -226,7 +216,6 @@ export default function CartPage() {
                   <span>₹{subtotal}</span>
                 </div>
 
-                {/* MEGA OFFER ALERT */}
                 {megaOfferActive && (
                   <div className="flex justify-between text-green-600 font-bold bg-green-50 p-3 rounded-xl border border-green-100">
                     <span>🔥 4 for ₹999 Offer Applied!</span>
@@ -235,9 +224,7 @@ export default function CartPage() {
                 )}
               </div>
 
-              {/* ADDRESS, PINCODE & SHIPPING ENGINE */}
               <div className="mb-6 border-t border-b py-6">
-                
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Full Delivery Address</label>
                 <textarea 
                   rows={2}
@@ -260,7 +247,6 @@ export default function CartPage() {
                   className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-black transition mb-4 text-center tracking-widest font-bold text-lg" 
                 />
 
-                {/* TAMIL NADU OPTIONS */}
                 {isTamilNadu && !megaOfferActive && (
                   <div className="space-y-3">
                     <p className="text-[10px] uppercase tracking-widest text-green-600 font-bold mb-2">Tamil Nadu Delivery Detected</p>
@@ -281,7 +267,6 @@ export default function CartPage() {
                   </div>
                 )}
 
-                {/* OTHER STATES OPTIONS */}
                 {isOtherState && !megaOfferActive && (
                   <div className="space-y-3">
                     <p className="text-[10px] uppercase tracking-widest text-blue-600 font-bold mb-2">National Delivery Detected</p>
@@ -302,7 +287,6 @@ export default function CartPage() {
                   </div>
                 )}
 
-                {/* FREE SHIPPING MESSAGE FOR OFFER */}
                 {megaOfferActive && (
                   <div className="bg-green-600 text-white p-4 rounded-xl flex items-center gap-3">
                     <Truck className="w-6 h-6" />
@@ -314,7 +298,6 @@ export default function CartPage() {
                 )}
               </div>
 
-              {/* FINAL TOTAL */}
               <div className="flex justify-between items-center mb-8">
                 <span className="text-lg font-bold uppercase tracking-widest">Total</span>
                 <span className="text-3xl font-black text-black">₹{finalTotal}</span>
@@ -337,7 +320,6 @@ export default function CartPage() {
                   *Please enter your full address, valid pincode, and select a courier.
                 </p>
               )}
-
             </div>
           </div>
         )}
