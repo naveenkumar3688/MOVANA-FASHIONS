@@ -122,18 +122,9 @@ export default function CartPage() {
   };
 
   const handlePayment = async () => {
-    if (!address) {
-      alert("Please enter your full delivery address.");
-      return;
-    }
-    if (pincode.length !== 6) {
-      alert("Please enter a valid 6-digit Pincode.");
-      return;
-    }
-    if (!selectedCourier && !megaOfferActive) {
-      alert("Please select a delivery partner (ST Courier, India Post, etc.).");
-      return;
-    }
+    if (!address) { alert("Please enter your full delivery address."); return; }
+    if (pincode.length !== 6) { alert("Please enter a valid 6-digit Pincode."); return; }
+    if (!selectedCourier && !megaOfferActive) { alert("Please select a delivery partner (ST Courier, India Post, etc.)."); return; }
 
     setIsProcessing(true);
     const res = await initializeRazorpay();
@@ -145,19 +136,22 @@ export default function CartPage() {
     }
 
     try {
-      // 🔙 BACK TO THE OLD WORKING URL THAT DOESN'T CRASH!
       const response = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: finalTotal }),
       });
 
+      // Catch HTML error pages from Vercel!
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `Server responded with status ${response.status}`);
+      }
+
       const data = await response.json();
 
       if (!data.orderId) {
-        alert('Server connection error. Please try again.');
-        setIsProcessing(false);
-        return;
+        throw new Error('Backend did not return an Order ID.');
       }
 
       const options = {
@@ -205,9 +199,9 @@ export default function CartPage() {
         alert('Payment failed or cancelled.');
         setIsProcessing(false);
       });
-    } catch (error) {
-      console.error(error);
-      alert("Something went wrong securely connecting to checkout. Please try again.");
+    } catch (error: any) {
+      console.error("Checkout Catch Error:", error);
+      alert(`Checkout Error: ${error.message}`);
     } finally {
       setIsProcessing(false);
     }
@@ -359,7 +353,6 @@ export default function CartPage() {
                 <span className="text-2xl font-black text-black">₹{finalTotal}</span>
               </div>
 
-              {/* 🚀 RESTORED "PAY NOW WITH RAZORPAY" BUTTON! */}
               <button 
                 onClick={handlePayment}
                 disabled={isProcessing}

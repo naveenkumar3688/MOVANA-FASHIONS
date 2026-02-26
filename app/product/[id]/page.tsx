@@ -3,9 +3,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation'; 
 import { supabase } from '../../../lib/supabase';
-import AddToCartButton from '../../../components/AddtoCartButton';
-import { Loader2, ShieldCheck, Truck, Zap } from 'lucide-react';
-import { useCart } from '../../../context/CartContext'; // 👈 USING THE NEW MASTER CART ENGINE
+import { Loader2, ShieldCheck, Truck, Zap, ShoppingCart } from 'lucide-react';
+import { useCart } from '../../../context/CartContext'; 
 
 export default function ProductPage() {
   const params = useParams();
@@ -14,8 +13,8 @@ export default function ProductPage() {
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState('L');
   
-  // 👈 WE DROPPED THE OLD STORE AND GRABBED THE GLOBAL INTERCOM
-  const { addToCart } = useCart(); 
+  // Connect to the master cart
+  const { addToCart } = useCart() || {}; 
 
   const sizes = ['M', 'L', 'XL', 'XXL'];
 
@@ -34,31 +33,36 @@ export default function ProductPage() {
 
   const productWithSize = {
     ...product,
-    id: `${product.id}-${selectedSize}`, // Keeps sizes separated in the cart!
+    id: `${product.id}-${selectedSize}`, 
     name: `${product.name} (Size: ${selectedSize})`
   };
 
-  // 🚀 BRAND NEW SMART BUY BUTTON
-  const handleBuyNow = async () => {
-    // 1. Check if they are logged in!
+  // 🔒 STRICT LOGIN CHECK FUNCTION
+  const requireLogin = async (action: () => void) => {
     const { data: { session } } = await supabase.auth.getSession();
-    
     if (!session) {
       alert("Please log in to your account to place an order!");
-      router.push('/login'); // Sends them straight to the login page!
+      router.push('/login'); 
       return; 
     }
-
-    // 2. If logged in, add to the global cart and instantly jump to the Cart Page!
-    addToCart(productWithSize);
-    router.push('/cart'); // 👈 JUMPS TO OUR MASTER CART PAGE
+    action(); // If logged in, run the cart action!
   };
+
+  // ⚡ BUY NOW (Adds to cart & jumps to checkout)
+  const handleBuyNow = () => requireLogin(() => {
+    if (addToCart) addToCart(productWithSize);
+    router.push('/cart'); 
+  });
+
+  // 🛒 ADD TO CART (Just adds to cart)
+  const handleAddToCart = () => requireLogin(() => {
+    if (addToCart) addToCart(productWithSize);
+  });
 
   return (
     <div className="min-h-screen bg-[#fafafa] text-black py-12 px-4 md:px-12">
       <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12">
         
-        {/* Left Side: Image */}
         <div className="bg-gray-100 rounded-2xl overflow-hidden aspect-[3/4] shadow-sm">
           {product.image_url ? (
             <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
@@ -67,7 +71,6 @@ export default function ProductPage() {
           )}
         </div>
 
-        {/* Right Side: Details */}
         <div className="flex flex-col justify-center">
           <span className="text-gray-500 tracking-widest text-sm uppercase mb-2">{product.category}</span>
           <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-4 uppercase">{product.name}</h1>
@@ -90,17 +93,22 @@ export default function ProductPage() {
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex flex-col gap-4 w-full md:w-3/4 mb-10">
+            {/* ⚡ BUY IT NOW BUTTON (Matches your screenshot design) */}
             <button 
               onClick={handleBuyNow}
-              className="w-full bg-blue-600 text-white py-4 rounded-xl font-bold uppercase tracking-widest text-sm hover:bg-blue-700 transition shadow-lg flex items-center justify-center gap-2"
+              className="w-full bg-black text-white py-4 rounded-xl font-bold uppercase tracking-widest text-sm hover:bg-gray-800 transition shadow-lg flex items-center justify-center gap-2"
             >
               <Zap className="w-5 h-5 fill-current" /> Buy It Now
             </button>
-            <div className="w-full border border-black rounded-xl overflow-hidden">
-               <AddToCartButton product={productWithSize} />
-            </div>
+            
+            {/* 🛒 ADD TO CART BUTTON */}
+            <button 
+              onClick={handleAddToCart}
+              className="w-full bg-white text-black border-2 border-black py-4 rounded-xl font-bold uppercase tracking-widest text-sm hover:bg-gray-50 transition shadow-sm flex items-center justify-center gap-2"
+            >
+              <ShoppingCart className="w-5 h-5" /> Add to Cart
+            </button>
           </div>
 
           <div className="border-t border-gray-200 pt-6 space-y-4 text-gray-600">

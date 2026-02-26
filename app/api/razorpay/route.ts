@@ -1,16 +1,17 @@
-export const dynamic = 'force-dynamic'; // 🚀 THE ULTIMATE CACHE BREAKER! FORCES LIVE VAULT ACCESS!
+export const dynamic = 'force-dynamic'; // 🚀 THE ULTIMATE CACHE BREAKER!
 
 import { NextResponse } from 'next/server';
 import Razorpay from 'razorpay';
 
 export async function POST(request: Request) {
   try {
-    const keyId = process.env.RAZORPAY_KEY_ID;
+    // 🛠️ FIX: Now it looks for the exact NEXT_PUBLIC key we put in Vercel!
+    const keyId = process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID;
     const keySecret = process.env.RAZORPAY_KEY_SECRET;
 
     if (!keyId || !keySecret) {
       return NextResponse.json({ 
-        error: `THE VAULT IS EMPTY v4! Next.js froze the keys again!` 
+        error: `THE VAULT IS EMPTY! Keys are missing from Vercel.` 
       }, { status: 500 });
     }
 
