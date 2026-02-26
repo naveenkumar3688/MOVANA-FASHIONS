@@ -16,6 +16,7 @@ export default function CartPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLocating, setIsLocating] = useState(false); 
   const [isMounted, setIsMounted] = useState(false); 
+  const router = useRouter();
 
   useEffect(() => {
     setIsMounted(true);
@@ -45,10 +46,12 @@ export default function CartPage() {
   });
 
   individualNightyPrices.sort((a, b) => b - a);
+
   const setsOfFour = Math.floor(individualNightyPrices.length / 4);
   const megaOfferActive = setsOfFour > 0;
 
   let finalNightyCost = (setsOfFour * 999);
+
   for (let i = setsOfFour * 4; i < individualNightyPrices.length; i++) {
     finalNightyCost += individualNightyPrices[i];
   }
@@ -56,7 +59,6 @@ export default function CartPage() {
   const rawNightyTotal = individualNightyPrices.reduce((sum, price) => sum + price, 0);
   const megaOfferDiscount = megaOfferActive ? (rawNightyTotal - finalNightyCost) : 0;
 
-  // 📦 SHIPPING LOGIC (Fixed to map perfectly)
   const stCourierPrice = isOver1Kg ? 100 : 50;
   const indiaPostTnPrice = 60;
   const delhiveryPrice = 130;
@@ -115,6 +117,17 @@ export default function CartPage() {
   };
 
   const handlePayment = async () => {
+    // 🔒 1. COMPULSORY LOGIN CHECK BEFORE ANYTHING ELSE!
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      alert("Please log in to your account to complete your purchase!");
+      router.push('/login'); // Send them to login page
+      return;
+    }
+
+    const customerEmail = session.user.email; // Grab their real email!
+
+    // 2. Normal Validations
     if (!address) { alert("Please enter your full delivery address."); return; }
     if (pincode.length !== 6) { alert("Please enter a valid 6-digit Pincode."); return; }
     if (!selectedCourier && !megaOfferActive) { alert("Please select a delivery partner (ST Courier, India Post, etc.)."); return; }
@@ -159,8 +172,8 @@ export default function CartPage() {
           const courierToSave = megaOfferActive && !selectedCourier ? 'Free Offer Delivery' : selectedCourier;
 
           const { error } = await supabase.from('orders').insert([{
-            customer_name: 'Guest Customer', 
-            customer_email: 'hello@movana.in',
+            customer_name: 'Customer', // Can update this later if you add names to profiles!
+            customer_email: customerEmail, // 🧾 SAVING THEIR REAL EMAIL TO THE DATABASE
             address: `${address}, Pincode: ${pincode}, Courier: ${courierToSave}`,
             amount: finalTotal,
             items: cartItems, 
@@ -174,14 +187,13 @@ export default function CartPage() {
           } else {
             clearCart(); 
             alert('✨ Payment Successful! Your premium essentials are on the way.');
-            // ⬛ THE BLACK SCREEN FIX: Force a true browser refresh to kill the Razorpay overlay!
             window.location.href = '/'; 
           }
         },
         prefill: {
-          name: 'Guest Customer',
-          email: 'hello@movana.in',
-          contact: '9999999999',
+          name: 'Customer',
+          email: customerEmail, // 🧾 GIVING THEIR REAL EMAIL TO RAZORPAY FOR THE BILL!
+          contact: '', // Can be made dynamic later
         },
       };
 
@@ -325,7 +337,6 @@ export default function CartPage() {
                       {isTamilNadu ? 'Tamil Nadu Delivery' : 'National Delivery'}
                     </p>
                     
-                    {/* 🚚 THE SHIPPING VALUE BUG IS FIXED HERE! */}
                     {isTamilNadu && (
                       <>
                         <CourierOption label={`ST Courier ${isOver1Kg && !megaOfferActive ? '(>1kg)' : ''}`} value="ST Courier" price={stCourierPrice} selected={selectedCourier} onSelect={setSelectedCourier} isFree={megaOfferActive} />
@@ -366,7 +377,6 @@ export default function CartPage() {
   );
 }
 
-// 🚚 BUG 2: FIXED COURIER OPTION LOGIC TO PASS EXPLICIT VALUE
 function CourierOption({ label, value, price, selected, onSelect, isFree }: any) {
   return (
     <label className={`flex items-center justify-between p-3 border rounded-xl cursor-pointer transition ${selected === value ? 'border-black bg-gray-50' : 'border-gray-200 hover:bg-gray-50'}`}>
