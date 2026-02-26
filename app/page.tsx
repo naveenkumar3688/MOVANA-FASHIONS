@@ -1,27 +1,22 @@
-'use client'; 
+'use client';
 
-import { useEffect, useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
-import AddToCartButton from '../components/AddtoCartButton';
-import { Search, ArrowRight, ShieldCheck, Truck, Star } from 'lucide-react';
+import { Loader2, Truck, ArrowRight, Star, ShieldCheck } from 'lucide-react';
 
-export default function Home() {
+export default function HomePage() {
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeCategory, setActiveCategory] = useState('All');
-  const [searchQuery, setSearchQuery] = useState('');
 
-  // 1. Fetch products when the page loads
-  // 1. Fetch products when the page loads (With Auto-Retry for Supabase Sleep Mode!)
+  // Auto-Retry logic so the database never "sleeps" on your customers!
   useEffect(() => {
     async function fetchProducts(retryCount = 0) {
       const { data, error } = await supabase.from('products').select('*');
       
-      // If it fails or returns empty because the database is asleep, try again!
       if ((error || !data || data.length === 0) && retryCount < 2) {
         console.log("Database waking up, retrying...");
-        setTimeout(() => fetchProducts(retryCount + 1), 1500); // Wait 1.5 seconds and retry
+        setTimeout(() => fetchProducts(retryCount + 1), 1500); 
         return;
       }
 
@@ -35,236 +30,132 @@ export default function Home() {
     fetchProducts();
   }, []);
 
-  const categories = ['All', ...Array.from(new Set(allProducts.map(p => p.category || 'Other')))];
-
-  const filteredProducts = allProducts.filter(p => {
-    const matchesCategory = activeCategory === 'All' || p.category === activeCategory;
-    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          (p.description && p.description.toLowerCase().includes(searchQuery.toLowerCase()));
-    return matchesCategory && matchesSearch;
-  });
-
-  const scrollToProducts = () => {
-    document.getElementById('products-section')?.scrollIntoView({ behavior: 'smooth' });
-  };
-
   return (
-    <main className="min-h-screen bg-[#fafafa] font-sans text-black">
+    <div className="min-h-screen bg-[#fafafa] font-sans">
       
-      {/* 🚨 THE MEGA OFFER BANNER 🚨 */}
-      <div className="bg-red-600 text-white text-center py-2.5 font-bold text-xs sm:text-sm tracking-[0.2em] uppercase animate-pulse">
-        🔥 Mega Offer: 4 Nighty @ ₹999 + Free Delivery! 🔥
-      </div>
-
-      {/* 🌟 PREMIUM HERO SECTION */}
-      <div className="relative bg-black text-white py-32 px-4 sm:px-6 lg:px-8 overflow-hidden">
-
-        {/* 🛠️ UPDATED IMAGE URL IS HERE */}
-        <div 
-          className="absolute inset-0 opacity-40 bg-cover bg-center" 
-          style={{ backgroundImage: `url('https://bdhmreseputrwkjqvajn.supabase.co/storage/v1/object/sign/product-images/img4.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtl eV8zYzdlMjMxOC1kNjkxLTQ4YWEtYjY3Yi0zZjA2MDgwODdhYzUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJwcm9kdWN0LWltYWdlcy9pbWc0LnBuZyIsImlhdCI6MTc3MjAwNzQ1MSwiZXhwIjoxODAzNTQzNDUxfQ.Jvf7wSQcrBHDQeDdc6iFCu3k_fRahP7Km23PqIiRHdg')` }}
-        />
+      {/* 🔥 THE NEW MEGA OFFER HERO SECTION */}
+      <section className="relative bg-gradient-to-br from-rose-50 via-white to-pink-50 overflow-hidden border-b border-pink-100">
         
-        <div className="relative max-w-7xl mx-auto text-center flex flex-col items-center z-10">
-          <h1 className="text-5xl sm:text-7xl font-extrabold tracking-tight mb-6 uppercase">
-            Comfort Meets <span className="text-transparent bg-clip-text bg-gradient-to-r from-gray-400 to-white">Luxury</span>
-          </h1>
-          <p className="mt-4 text-lg sm:text-xl text-gray-300 max-w-2xl mb-10 tracking-wide">
-            Discover our premium collection of nighties, essential innerwear, and ultra-soft home accessories.
-          </p>
-          
-          {/* 🔍 LIVE SEARCH BAR */}
-          <div className="relative w-full max-w-2xl mx-auto mb-10">
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={(e) => {
-                setSearchQuery(e.target.value);
-                scrollToProducts();
-              }}
-              placeholder="Search for nighties, towels, innerwear..."
-              className="w-full py-5 pl-14 pr-6 text-gray-900 bg-white/95 backdrop-blur-sm border-2 border-transparent rounded-full focus:outline-none focus:border-white focus:bg-white transition-all shadow-2xl text-lg"
-            />
-            <Search className="w-6 h-6 text-gray-500 absolute left-5 top-1/2 transform -translate-y-1/2" />
-          </div>
-
-          <button 
-            onClick={scrollToProducts}
-            className="inline-flex items-center gap-2 bg-white text-black px-8 py-4 rounded-full font-bold uppercase tracking-widest hover:bg-gray-200 hover:scale-105 transition-all shadow-lg"
-          >
-            Shop The Collection <ArrowRight className="w-5 h-5" />
-          </button>
+        {/* Decorative Background Glows */}
+        <div className="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+          <div className="absolute -top-20 -right-20 w-96 h-96 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30 animate-pulse"></div>
+          <div className="absolute top-40 -left-20 w-72 h-72 bg-rose-200 rounded-full mix-blend-multiply filter blur-3xl opacity-30"></div>
         </div>
-      </div>
 
-      {/* 👗 THE CATEGORY GRID */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
-        <div className="flex justify-between items-end mb-12 text-center sm:text-left">
-          <div className="w-full">
-            <h2 className="text-4xl font-extrabold text-black tracking-tight uppercase">Shop by Category</h2>
-            <p className="text-gray-500 mt-2 tracking-wide">Explore our signature collections</p>
-          </div>
-        </div>
-        
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-          <Link href="/womenswear" className="group relative h-[400px] bg-gray-100 rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500">
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10" />
-            <img src="https://images.unsplash.com/photo-1515347619253-12fb1817dd48?q=80&w=800&auto=format&fit=crop" alt="Womenswear" className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-            <div className="absolute bottom-8 left-8 z-20">
-              <h3 className="text-3xl font-bold text-white mb-2 uppercase tracking-wide">Women</h3>
-              <p className="text-gray-300 text-sm tracking-widest uppercase">Nighties & Innerwear</p>
-            </div>
-          </Link>
-
-          <Link href="/menswear" className="group relative h-[400px] bg-gray-100 rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500">
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10" />
-            <img src="https://images.unsplash.com/photo-1617137968427-85924c800a22?q=80&w=800&auto=format&fit=crop" alt="Menswear" className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-            <div className="absolute bottom-8 left-8 z-20">
-              <h3 className="text-3xl font-bold text-white mb-2 uppercase tracking-wide">Men</h3>
-              <p className="text-gray-300 text-sm tracking-widest uppercase">Essentials & Innerwear</p>
-            </div>
-          </Link>
-
-          <Link href="/kidswear" className="group relative h-[400px] bg-gray-100 rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500">
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10" />
-            <img src="https://images.unsplash.com/photo-1519241047957-be31d7379a5d?q=80&w=800&auto=format&fit=crop" alt="Kidswear" className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-            <div className="absolute bottom-8 left-8 z-20">
-              <h3 className="text-3xl font-bold text-white mb-2 uppercase tracking-wide">Kids</h3>
-              <p className="text-gray-300 text-sm tracking-widest uppercase">Comfort & Daily Wear</p>
-            </div>
-          </Link>
-
-          <Link href="/home-accessories" className="group relative h-[400px] bg-gray-100 rounded-3xl overflow-hidden shadow-sm hover:shadow-2xl transition-all duration-500">
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent z-10" />
-            <img src="https://images.unsplash.com/photo-1616627547584-bf28cee262db?q=80&w=800&auto=format&fit=crop" alt="Home Accessories" className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-            <div className="absolute bottom-8 left-8 z-20">
-              <h3 className="text-3xl font-bold text-white mb-2 uppercase tracking-wide">Home</h3>
-              <p className="text-gray-300 text-sm tracking-widest uppercase">Towels & Essentials</p>
-            </div>
-          </Link>
-        </div>
-      </div>
-
-      {/* 🛒 LIVE SUPABASE PRODUCTS SECTION */}
-      <section id="products-section" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 border-t border-gray-200">
-        <h2 className="text-4xl font-extrabold text-black text-center mb-10 uppercase tracking-tight">Latest Arrivals</h2>
-        
-        {loading ? (
-          <div className="text-center py-20">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black mx-auto mb-4"></div>
-            <p className="text-gray-500 text-lg uppercase tracking-widest">Loading Premium Collection...</p>
-          </div>
-        ) : (
-          <>
-            {/* Category Filter Buttons */}
-            <div className="flex flex-wrap justify-center gap-4 mb-12">
-              <button
-                key="All"
-                onClick={() => setActiveCategory('All')}
-                className={`px-6 py-2 rounded-full font-bold uppercase tracking-wider text-xs transition-all ${
-                  activeCategory === 'All' ? 'bg-black text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                }`}
-              >
-                All
-              </button>
-              {categories.filter(c => c !== 'All').map((category) => (
-                <button
-                  key={category}
-                  onClick={() => setActiveCategory(category)}
-                  className={`px-6 py-2 rounded-full font-bold uppercase tracking-wider text-xs transition-all ${
-                    activeCategory === category ? 'bg-black text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                  }`}
-                >
-                  {category}
-                </button>
-              ))}
-            </div>
-
-            {/* Product Grid */}
-            {filteredProducts.length === 0 ? (
-              <p className="text-center text-gray-500 py-10 text-lg">No products found matching your search.</p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
-                {filteredProducts.map((product) => (
-                  <div key={product.id} className="group border border-gray-100 rounded-2xl overflow-hidden shadow-sm hover:shadow-xl transition-all duration-300 flex flex-col bg-white">
-                    
-                    <Link href={`/product/${product.id}`} className="block relative aspect-[3/4] overflow-hidden bg-gray-50 cursor-pointer">
-                      {product.image_url ? (
-                        <img 
-                          src={product.image_url} 
-                          alt={product.name} 
-                          className="h-full w-full object-cover group-hover:scale-110 transition duration-700"
-                        />
-                      ) : (
-                        <div className="h-full w-full flex items-center justify-center text-gray-400">No Image</div>
-                      )}
-                      <span className="absolute top-4 left-4 bg-white/90 text-black text-[10px] font-bold px-3 py-1 uppercase tracking-widest rounded-full shadow-sm backdrop-blur-sm">
-                        {product.category || 'New'}
-                      </span>
-                    </Link>
-
-                    <div className="p-6 flex flex-col flex-1">
-                      <Link href={`/product/${product.id}`} className="hover:text-gray-500 transition-colors">
-                        <h3 className="text-lg font-extrabold text-black uppercase tracking-tight truncate">{product.name}</h3>
-                        <p className="text-gray-500 text-sm mt-2 line-clamp-2 min-h-[40px]">
-                          {product.description || 'Premium quality fabric.'}
-                        </p>
-                      </Link>
-                      
-                      {/* 🚀 THE NEW DUAL-BUTTON SECTION */}
-                      <div className="mt-auto pt-6 border-t border-gray-50">
-                        <div className="text-2xl font-black text-black mb-4">₹{product.price}</div>
-                        <div className="flex gap-2">
-                          <div className="flex-1">
-                            <AddToCartButton product={product} />
-                          </div>
-                          <Link 
-                            href={`/product/${product.id}`}
-                            className="flex-1 bg-black text-white flex items-center justify-center py-2.5 rounded-xl text-[10px] font-extrabold uppercase tracking-widest hover:bg-gray-800 hover:shadow-lg transition-all"
-                          >
-                            Buy Now
-                          </Link>
-                        </div>
-                      </div>
-
-                    </div>
-                  </div>
-                ))}
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="flex flex-col md:flex-row items-center justify-between py-12 md:py-20 gap-10">
+            
+            {/* 💃 LEFT SIDE: The Happy Woman Image */}
+            <div className="w-full md:w-1/2 flex justify-center relative">
+              <div className="relative w-full max-w-md aspect-square md:aspect-auto md:h-[550px]">
+                {/* Ensure your image is named 'offer-woman.png' and placed in your 'public' folder! */}
+                <img 
+                  src="/offer-woman.png" 
+                  alt="Happy Woman pointing at offer" 
+                  className="w-full h-full object-contain drop-shadow-2xl z-10 relative"
+                  onError={(e) => {
+                    // This is just a temporary placeholder until you upload your own image!
+                    e.currentTarget.src = "https://images.unsplash.com/photo-1583391733958-d6e06b72a690?q=80&w=800&auto=format&fit=crop"; 
+                  }}
+                />
               </div>
-            )}
-          </>
-        )}
+            </div>
+
+            {/* 💰 RIGHT SIDE: The Offer Math & Buttons */}
+            <div className="w-full md:w-1/2 text-center md:text-left">
+              <span className="inline-block py-1.5 px-4 rounded-full bg-red-100 text-red-600 text-xs font-black uppercase tracking-widest mb-6 border border-red-200 shadow-sm animate-bounce">
+                Mega Clearance Sale
+              </span>
+              
+              <h1 className="text-4xl md:text-6xl font-black text-gray-900 uppercase tracking-tight leading-tight mb-2">
+                Premium Nighties
+              </h1>
+              <h2 className="text-xl md:text-2xl font-bold text-gray-500 mb-8 uppercase tracking-wide">
+                Buy 4 and Save Big!
+              </h2>
+              
+              {/* The Strikethrough Pricing */}
+              <div className="flex flex-wrap items-center justify-center md:justify-start gap-4 mb-8 bg-white/80 p-6 rounded-3xl border border-white backdrop-blur-md shadow-xl inline-flex w-full md:w-auto">
+                <span className="text-4xl md:text-5xl font-black text-gray-400 line-through decoration-red-500 decoration-[4px]">
+                  ₹1200
+                </span>
+                <span className="text-6xl md:text-8xl font-black text-red-600 drop-shadow-md">
+                  ₹999
+                </span>
+              </div>
+
+              {/* Free Shipping Badge */}
+              <div className="flex flex-col gap-4 mb-10 w-full md:w-auto">
+                <div className="flex items-center gap-4 bg-white px-6 py-4 rounded-2xl shadow-sm border border-gray-100 w-full md:max-w-md">
+                  <div className="bg-green-100 p-2 rounded-full shrink-0">
+                    <Truck className="w-6 h-6 text-green-600" />
+                  </div>
+                  <p className="font-bold text-sm md:text-base text-gray-800 uppercase tracking-wide text-left">
+                    Free Shipping All Over India
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Button */}
+              <div>
+                <Link 
+                  href="#catalogue" 
+                  className="inline-flex justify-center items-center gap-2 bg-black text-white px-10 py-5 rounded-full font-bold uppercase tracking-widest text-sm hover:bg-gray-800 hover:scale-105 transition-all shadow-[0_10px_40px_-10px_rgba(0,0,0,0.3)] w-full md:w-auto"
+                >
+                  Claim Offer Now <ArrowRight className="w-5 h-5" />
+                </Link>
+              </div>
+            </div>
+            
+          </div>
+        </div>
       </section>
 
-      {/* ✨ BRAND TRUST BADGES */}
-      <div className="bg-white border-t border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 text-center">
-            <div className="flex flex-col items-center group">
-              <div className="bg-gray-50 p-5 rounded-full mb-4 group-hover:scale-110 group-hover:bg-black group-hover:text-white transition-all duration-300">
-                <Truck className="w-8 h-8" />
-              </div>
-              <h4 className="text-lg font-bold uppercase tracking-wide text-black">Fast Delivery</h4>
-              <p className="text-gray-500 text-sm mt-2">Delivered safely to your doorstep.</p>
-            </div>
-            <div className="flex flex-col items-center group">
-              <div className="bg-gray-50 p-5 rounded-full mb-4 group-hover:scale-110 group-hover:bg-black group-hover:text-white transition-all duration-300">
-                <ShieldCheck className="w-8 h-8" />
-              </div>
-              <h4 className="text-lg font-bold uppercase tracking-wide text-black">Secure Payments</h4>
-              <p className="text-gray-500 text-sm mt-2">100% secure via Razorpay.</p>
-            </div>
-            <div className="flex flex-col items-center group">
-              <div className="bg-gray-50 p-5 rounded-full mb-4 group-hover:scale-110 group-hover:bg-black group-hover:text-white transition-all duration-300">
-                <Star className="w-8 h-8" />
-              </div>
-              <h4 className="text-lg font-bold uppercase tracking-wide text-black">Premium Quality</h4>
-              <p className="text-gray-500 text-sm mt-2">Finest materials for maximum comfort.</p>
-            </div>
-          </div>
+      {/* 👗 CATALOGUE SECTION */}
+      <section id="catalogue" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20">
+        <div className="text-center mb-16">
+          <h2 className="text-3xl font-black uppercase tracking-widest mb-4">Latest Arrivals</h2>
+          <div className="w-24 h-1 bg-black mx-auto"></div>
         </div>
-      </div>
 
-    </main>
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <Loader2 className="w-10 h-10 animate-spin text-black mb-4" />
+            <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Loading Collection...</p>
+          </div>
+        ) : allProducts.length === 0 ? (
+          <div className="text-center py-20">
+            <p className="text-gray-500 font-medium">No products available at the moment.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
+            {allProducts.map((product) => (
+              <Link href={`/product/${product.id}`} key={product.id} className="group">
+                <div className="bg-gray-100 rounded-3xl overflow-hidden aspect-[3/4] mb-4 relative shadow-sm border border-gray-200">
+                  {product.image_url ? (
+                    <img 
+                      src={product.image_url} 
+                      alt={product.name} 
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-bold uppercase tracking-widest">No Image</div>
+                  )}
+                  {/* Premium Badge */}
+                  <div className="absolute top-3 left-3 bg-white text-black text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full shadow-sm">
+                    Offer Applied
+                  </div>
+                </div>
+                <div className="px-2">
+                  <h3 className="font-bold text-sm uppercase tracking-tight text-black line-clamp-1">{product.name}</h3>
+                  <p className="text-gray-500 text-[10px] mt-1 uppercase tracking-widest mb-2">{product.category}</p>
+                  <p className="font-black text-lg text-black">₹{product.price}</p>
+                </div>
+              </Link>
+            ))}
+          </div>
+        )}
+      </section>
+    </div>
   );
 }
