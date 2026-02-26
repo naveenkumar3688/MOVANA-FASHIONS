@@ -53,7 +53,7 @@ export default function Home() {
         {/* 🛠️ UPDATED IMAGE URL IS HERE */}
         <div 
           className="absolute inset-0 opacity-40 bg-cover bg-center" 
-          style={{ backgroundImage: `url('https://bdhmreseputrwkjqvajn.supabase.co/storage/v1/object/sign/product-images/img4.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtleV8zYzdlMjMxOC1kNjkxLTQ4YWEtYjY3Yi0zZjA2MDgwODdhYzUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJwcm9kdWN0LWltYWdlcy9pbWc0LnBuZyIsImlhdCI6MTc3MjAwNzQ1MSwiZXhwIjoxODAzNTQzNDUxfQ.Jvf7wSQcrBHDQeDdc6iFCu3k_fRahP7Km23PqIiRHdg')` }}
+          style={{ backgroundImage: `url('https://bdhmreseputrwkjqvajn.supabase.co/storage/v1/object/sign/product-images/img4.png?token=eyJraWQiOiJzdG9yYWdlLXVybC1zaWduaW5nLWtl eV8zYzdlMjMxOC1kNjkxLTQ4YWEtYjY3Yi0zZjA2MDgwODdhYzUiLCJhbGciOiJIUzI1NiJ9.eyJ1cmwiOiJwcm9kdWN0LWltYWdlcy9pbWc0LnBuZyIsImlhdCI6MTc3MjAwNzQ1MSwiZXhwIjoxODAzNTQzNDUxfQ.Jvf7wSQcrBHDQeDdc6iFCu3k_fRahP7Km23PqIiRHdg')` }}
         />
         
         <div className="relative max-w-7xl mx-auto text-center flex flex-col items-center z-10">

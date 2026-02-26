@@ -5,39 +5,47 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { Trash2, ShieldCheck, ArrowRight, Truck, Loader2 } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
+import { useCart } from '../../context/CartContext';
 
 export default function CartPage() {
-  const [cartItems, setCartItems] = useState<any[]>([]);
+  // 🛡️ SAFETY SHIELD 1: Give default empty arrays/functions in case context is still loading
+  const { cartItems = [], removeItem = () => {}, clearCart = () => {} } = useCart() || {}; 
+  
   const [pincode, setPincode] = useState('');
-  const [address, setAddress] = useState(''); // Added so we can save it to Supabase!
+  const [address, setAddress] = useState(''); 
   const [selectedCourier, setSelectedCourier] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isMounted, setIsMounted] = useState(false); // 🛡️ SAFETY SHIELD 2: Hydration Fix
   const router = useRouter();
 
-  // 🔄 1. LOAD THE REAL CART ITEMS ON PAGE LOAD
+  // Wait until the page fully loads before showing the cart to prevent Next.js crashes
   useEffect(() => {
-    const savedCart = localStorage.getItem('cart');
-    if (savedCart) {
-      setCartItems(JSON.parse(savedCart));
-    }
+    setIsMounted(true);
   }, []);
 
-  // 🧮 2. THE MATH & MEGA OFFER LOGIC
-  const totalItems = cartItems.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotal = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  const totalWeightKg = totalItems * 0.25; // Assuming 250g per item
+  // 🧮 THE MATH & MEGA OFFER LOGIC
+  const totalItems = cartItems.reduce((sum: any, item: any) => sum + item.quantity, 0);
+  const subtotal = cartItems.reduce((sum: any, item: any) => sum + (item.price * item.quantity), 0);
+  const totalWeightKg = totalItems * 0.25; 
   const isOver1Kg = totalWeightKg > 1;
 
   const isTamilNadu = pincode.startsWith('6') && pincode.length === 6;
   const isOtherState = pincode.length === 6 && !pincode.startsWith('6');
 
-  const nightyCount = cartItems.filter(item => item.category === 'Womenswear' || item.name.toLowerCase().includes('nighty')).reduce((sum, item) => sum + item.quantity, 0);
+  // Check for womenswear/nighties safely
+  const nightyCount = cartItems.filter((item: any) => 
+    item?.category === 'Womenswear' || item?.name?.toLowerCase().includes('nighty')
+  ).reduce((sum: any, item: any) => sum + item.quantity, 0);
+  
   const megaOfferActive = nightyCount >= 4;
   
-  const standardPriceForFour = cartItems.find(i => i.category === 'Womenswear' || i.name.toLowerCase().includes('nighty'))?.price || 499;
+  const standardPriceForFour = cartItems.find((i: any) => 
+    i?.category === 'Womenswear' || i?.name?.toLowerCase().includes('nighty')
+  )?.price || 499;
+  
   const megaOfferDiscount = megaOfferActive ? ((standardPriceForFour * 4) - 999) : 0;
 
-  // 📦 3. SHIPPING LOGIC
+  // 📦 SHIPPING LOGIC
   let shippingCost = 0;
   if (megaOfferActive) {
     shippingCost = 0; 
@@ -51,16 +59,10 @@ export default function CartPage() {
     shippingCost = 130; 
   }
 
-  const finalTotal = subtotal - megaOfferDiscount + shippingCost;
+  // Ensure total never goes negative
+  const finalTotal = Math.max(0, subtotal - megaOfferDiscount + shippingCost);
 
-  // 🗑️ 4. REMOVE ITEM FROM CART
-  const removeItem = (id: number) => {
-    const updatedCart = cartItems.filter(item => item.id !== id);
-    setCartItems(updatedCart);
-    localStorage.setItem('cart', JSON.stringify(updatedCart)); // Save changes to local storage
-  };
-
-  // 🚀 5. RAZORPAY & SUPABASE CHECKOUT
+  // 🚀 RAZORPAY & SUPABASE CHECKOUT
   const initializeRazorpay = () => {
     return new Promise((resolve) => {
       const script = document.createElement('script');
@@ -86,67 +88,81 @@ export default function CartPage() {
       return;
     }
 
-    // Get Order ID from your backend
-    const data = await fetch('/api/create-order', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount: finalTotal }),
-    }).then((t) => t.json());
+    try {
+      // Get Order ID from your backend
+      const data = await fetch('/api/create-order', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount: finalTotal }),
+      }).then((t) => t.json());
 
-    if (!data.orderId) {
-      alert('Server error. Could not connect to payment gateway.');
+      if (!data.orderId) {
+        alert('Server error. Could not connect to payment gateway.');
+        setIsProcessing(false);
+        return;
+      }
+
+      const options = {
+        key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
+        name: 'MOVANA FASHIONS',
+        currency: 'INR',
+        amount: finalTotal * 100,
+        order_id: data.orderId,
+        description: 'Premium Essentials',
+        theme: { color: '#000000' },
+        handler: async function (response: any) {
+          
+          // 🎉 PAYMENT SUCCESSFUL! NOW SAVE TO SUPABASE!
+          const { error } = await supabase.from('orders').insert([{
+            customer_name: 'Guest Customer', 
+            customer_email: 'hello@movana.in',
+            address: `${address}, Pincode: ${pincode}, Courier: ${selectedCourier || 'Free Offer Delivery'}`,
+            amount: finalTotal,
+            items: cartItems, 
+            payment_id: response.razorpay_payment_id,
+            status: 'Paid & Processing'
+          }]);
+
+          if (error) {
+            console.error("Supabase Error:", error);
+            alert("Payment successful, but we had trouble saving the order. Please contact support.");
+          } else {
+            clearCart(); // Safely clear using context
+            alert('✨ Payment Successful! Your premium essentials are on the way.');
+            router.push('/'); 
+          }
+        },
+        prefill: {
+          name: 'Guest Customer',
+          email: 'hello@movana.in',
+          contact: '9999999999',
+        },
+      };
+
+      const paymentObject = new (window as any).Razorpay(options);
+      paymentObject.open();
+      
+      paymentObject.on('payment.failed', function () {
+        alert('Payment failed or cancelled.');
+        setIsProcessing(false);
+      });
+    } catch (error) {
+      console.error(error);
+      alert("Something went wrong during checkout.");
+    } finally {
       setIsProcessing(false);
-      return;
     }
-
-    const options = {
-      key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-      name: 'MOVANA FASHIONS',
-      currency: 'INR',
-      amount: finalTotal * 100,
-      order_id: data.orderId,
-      description: 'Premium Essentials',
-      theme: { color: '#000000' },
-      handler: async function (response: any) {
-        
-        // 🎉 PAYMENT SUCCESSFUL! NOW SAVE TO SUPABASE!
-        const { error } = await supabase.from('orders').insert([{
-          customer_name: 'Guest Customer', // Update this later when you add user profiles!
-          customer_email: 'customer@example.com',
-          address: `${address}, Pincode: ${pincode}, Courier: ${selectedCourier || 'Free Offer Delivery'}`,
-          amount: finalTotal,
-          items: cartItems, // Saves the whole cart as JSONB
-          payment_id: response.razorpay_payment_id,
-          status: 'Paid & Processing'
-        }]);
-
-        if (error) {
-          console.error("Supabase Error:", error);
-          alert("Payment successful, but we had trouble saving the order. Please contact support.");
-        } else {
-          localStorage.removeItem('cart'); // Clear the cart
-          setCartItems([]);
-          alert('✨ Payment Successful! Your premium essentials are on the way.');
-          router.push('/'); // Send them back to the homepage
-        }
-      },
-      prefill: {
-        name: 'Guest Customer',
-        email: 'hello@movana.in',
-        contact: '9999999999',
-      },
-    };
-
-    const paymentObject = new (window as any).Razorpay(options);
-    paymentObject.open();
-    
-    paymentObject.on('payment.failed', function () {
-      alert('Payment failed or cancelled.');
-      setIsProcessing(false);
-    });
-    
-    setIsProcessing(false);
   };
+
+  // 🛡️ If the page hasn't mounted yet, show a clean loading spinner instead of crashing!
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-[#fafafa] flex flex-col items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-black mb-4" />
+        <p className="text-sm uppercase tracking-widest text-gray-500 font-bold">Loading Cart...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#fafafa] font-sans pb-20">
@@ -170,10 +186,14 @@ export default function CartPage() {
             
             {/* LEFT COLUMN: ITEMS */}
             <div className="lg:col-span-2 space-y-6">
-              {cartItems.map((item) => (
+              {cartItems.map((item: any) => (
                 <div key={item.id} className="flex gap-6 p-6 bg-white rounded-3xl shadow-sm border border-gray-100">
                   <div className="w-24 h-32 bg-gray-50 rounded-xl overflow-hidden shrink-0 relative">
-                    <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                    {item.image_url ? (
+                      <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-gray-300 text-xs">No Image</div>
+                    )}
                   </div>
                   <div className="flex flex-col flex-1 justify-between py-1">
                     <div className="flex justify-between items-start">
