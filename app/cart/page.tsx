@@ -3,18 +3,19 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Trash2, ShieldCheck, ArrowRight, Truck, Loader2, MapPin } from 'lucide-react';
+import { Trash2, ShieldCheck, ArrowRight, Truck, Loader2, MapPin, Minus, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useCart } from '../../context/CartContext';
 
 export default function CartPage() {
-  const { cartItems = [], removeItem = () => {}, clearCart = () => {} } = useCart() || {}; 
+  // 🔥 Get updateQuantity from context
+  const { cartItems = [], removeItem = () => {}, updateQuantity = () => {}, clearCart = () => {} } = useCart() || {}; 
   
   const [pincode, setPincode] = useState('');
   const [address, setAddress] = useState(''); 
   const [selectedCourier, setSelectedCourier] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isLocating, setIsLocating] = useState(false); // 📍 State for the GPS button
+  const [isLocating, setIsLocating] = useState(false); 
   const [isMounted, setIsMounted] = useState(false); 
   const router = useRouter();
 
@@ -22,7 +23,14 @@ export default function CartPage() {
     setIsMounted(true);
   }, []);
 
-  // 🧮 THE MATH & MEGA OFFER LOGIC
+  // 🧠 SMARTER NIGHTY DETECTOR
+  const isNighty = (item: any) => {
+    const nameMatch = item?.name?.toLowerCase().includes('night');
+    const catMatch = item?.category?.toLowerCase().includes('night') || item?.category?.toLowerCase().includes('women');
+    return nameMatch || catMatch;
+  };
+
+  // 🧮 FIXED MATH LOGIC
   const totalItems = cartItems.reduce((sum: any, item: any) => sum + item.quantity, 0);
   const subtotal = cartItems.reduce((sum: any, item: any) => sum + (item.price * item.quantity), 0);
   const totalWeightKg = totalItems * 0.25; 
@@ -31,40 +39,34 @@ export default function CartPage() {
   const isTamilNadu = pincode.startsWith('6') && pincode.length === 6;
   const isOtherState = pincode.length === 6 && !pincode.startsWith('6');
 
-  // SMARTER NIGHTY DETECTOR
-  const isNighty = (item: any) => {
-    const nameMatch = item?.name?.toLowerCase().includes('night');
-    const catMatch = item?.category?.toLowerCase().includes('night') || item?.category?.toLowerCase().includes('women');
-    return nameMatch || catMatch;
-  };
-
-  const nightyCount = cartItems.filter(isNighty).reduce((sum: any, item: any) => sum + item.quantity, 0);
+  const nightyItems = cartItems.filter(isNighty);
+  const nightyCount = nightyItems.reduce((sum: any, item: any) => sum + item.quantity, 0);
   const megaOfferActive = nightyCount >= 4;
   
-  const standardPriceForFour = cartItems.find(isNighty)?.price || 499;
-  const megaOfferDiscount = megaOfferActive ? ((standardPriceForFour * 4) - 999) : 0;
+  // ✅ CORRECT MATH: Calculate total price of ONLY nighties, then subtract 999 to find discount
+  const totalNightyPrice = nightyItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
+  const megaOfferDiscount = megaOfferActive ? (totalNightyPrice - 999) : 0;
 
-  // 📦 SHIPPING LOGIC (Base Prices)
+  // 📦 SHIPPING LOGIC
   const stCourierPrice = isOver1Kg ? 100 : 50;
   const indiaPostTnPrice = 60;
   const delhiveryPrice = 130;
   const indiaPostNatPrice = 100;
 
-  // Calculate actual applied shipping cost
   let shippingCost = 0;
   if (selectedCourier === 'ST Courier') shippingCost = stCourierPrice;
   else if (selectedCourier === 'India Post TN') shippingCost = indiaPostTnPrice;
   else if (selectedCourier === 'India Post National') shippingCost = indiaPostNatPrice;
   else if (selectedCourier === 'Delhivery') shippingCost = delhiveryPrice;
 
-  // Force shipping to 0 if Mega Offer is active!
   if (megaOfferActive) {
     shippingCost = 0;
   }
 
+  // Ensure final total is never negative
   const finalTotal = Math.max(0, subtotal - megaOfferDiscount + shippingCost);
 
-  // 📍 GPS AUTO-DETECT FUNCTION
+  // 📍 FIXED GPS AUTO-DETECT
   const detectLocation = () => {
     setIsLocating(true);
     if ('geolocation' in navigator) {
@@ -72,22 +74,28 @@ export default function CartPage() {
         async (position) => {
           try {
             const { latitude, longitude } = position.coords;
-            // Free public reverse-geocoding API
             const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
             const data = await res.json();
             
-            if (data.postcode) setPincode(data.postcode);
-            setAddress(`${data.locality || data.city || ''}, ${data.principalSubdivision || data.adminArea || ''}, India`);
-            setSelectedCourier(''); // Reset courier so they pick one based on new location
+            // ✅ Forcefully grab postcode if available
+            if (data.postcode) {
+                 setPincode(data.postcode);
+            } else {
+                 alert("GPS found your city, but couldn't detect the exact Pincode. Please enter it manually.");
+            }
+
+            setAddress(`${data.locality || ''} ${data.city || ''}, ${data.principalSubdivision || data.adminArea || ''}, India`);
+            setSelectedCourier(''); 
           } catch (err) {
-            alert("Could not perfectly detect location. Please type it in.");
+            alert("Could not connect to location service. Please type address manually.");
           }
           setIsLocating(false);
         },
         () => {
           alert("Location permission denied! Please type your address manually.");
           setIsLocating(false);
-        }
+        },
+        { timeout: 10000 } // Add timeout for faster failure reaction
       );
     } else {
       alert("Your browser does not support GPS location.");
@@ -95,7 +103,7 @@ export default function CartPage() {
     }
   };
 
-  // 🚀 RAZORPAY & SUPABASE CHECKOUT
+  // 🚀 RAZORPAY CHECKOUT
   const initializeRazorpay = () => {
     return new Promise((resolve) => {
       const script = document.createElement('script');
@@ -108,7 +116,7 @@ export default function CartPage() {
 
   const handlePayment = async () => {
     if (!address || pincode.length !== 6 || !selectedCourier) {
-      alert("Please enter your full address, pincode, and select a courier option.");
+      alert("Please complete delivery details first.");
       return;
     }
 
@@ -116,15 +124,13 @@ export default function CartPage() {
     const res = await initializeRazorpay();
 
     if (!res) {
-      alert('Razorpay failed to load. Please check your internet connection.');
+      alert('Razorpay failed to load. Offline?');
       setIsProcessing(false);
       return;
     }
 
     try {
-      // 🛠️ BUG 1 FIX: Using absolute URL to prevent Vercel routing errors
       const API_URL = `${window.location.origin}/api/create-order`;
-      
       const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -135,7 +141,7 @@ export default function CartPage() {
 
       if (!data.orderId) {
         console.error("Backend Error:", data);
-        alert('Server connection error. Please make sure your Razorpay keys are loaded in Vercel!');
+        alert('Payment Gateway Error. Please try again later.');
         setIsProcessing(false);
         return;
       }
@@ -161,12 +167,11 @@ export default function CartPage() {
 
           if (error) {
             console.error("Supabase Error:", error);
-            alert("Payment successful, but we had trouble saving the order. Please contact support.");
-          } else {
-            clearCart(); 
-            alert('✨ Payment Successful! Your premium essentials are on the way.');
-            router.push('/'); 
           }
+          // Clear cart regardless of supabase save to prevent double orders
+          clearCart(); 
+          alert('✨ Payment Successful! Order Placed.');
+          router.push('/'); 
         },
         prefill: {
           name: 'Guest Customer',
@@ -179,12 +184,12 @@ export default function CartPage() {
       paymentObject.open();
       
       paymentObject.on('payment.failed', function () {
-        alert('Payment failed or cancelled. Please try again.');
+        alert('Payment failed or cancelled.');
         setIsProcessing(false);
       });
     } catch (error) {
       console.error("Checkout Error:", error);
-      alert("Something went wrong securely connecting to checkout. Trying again later.");
+      alert("Connection error during checkout.");
     } finally {
       setIsProcessing(false);
     }
@@ -193,33 +198,32 @@ export default function CartPage() {
   if (!isMounted) {
     return (
       <div className="min-h-screen bg-[#fafafa] flex flex-col items-center justify-center">
-        <Loader2 className="w-10 h-10 animate-spin text-black mb-4" />
-        <p className="text-sm uppercase tracking-widest text-gray-500 font-bold">Loading Cart...</p>
+        <Loader2 className="w-8 h-8 animate-spin text-black mb-4" />
       </div>
     );
   }
 
   return (
     <div className="min-h-screen bg-[#fafafa] font-sans pb-20">
-      <div className="bg-black text-white py-12 px-4 text-center">
-        <h1 className="text-3xl sm:text-4xl font-extrabold uppercase tracking-widest mb-2">Shopping Cart</h1>
-        <p className="text-gray-400 tracking-widest uppercase text-xs">Secure Checkout</p>
+      <div className="bg-black text-white py-10 px-4 text-center">
+        <h1 className="text-2xl sm:text-3xl font-extrabold uppercase tracking-widest mb-1">Shopping Cart</h1>
+        <p className="text-gray-400 tracking-widest uppercase text-[10px]">Secure Checkout</p>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
         {cartItems.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-3xl border border-gray-100 shadow-sm">
-            <h2 className="text-2xl font-bold uppercase tracking-tight mb-4">Your Cart is Empty</h2>
-            <Link href="/" className="inline-flex items-center gap-2 bg-black text-white px-8 py-4 rounded-full font-bold uppercase tracking-widest text-xs hover:bg-gray-800 transition">
+          <div className="text-center py-16 bg-white rounded-3xl border border-gray-100 shadow-sm">
+            <h2 className="text-xl font-bold uppercase tracking-tight mb-4">Your Cart is Empty</h2>
+            <Link href="/" className="inline-flex items-center gap-2 bg-black text-white px-6 py-3 rounded-full font-bold uppercase tracking-widest text-[10px] hover:bg-gray-800 transition">
               Continue Shopping <ArrowRight className="w-4 h-4" />
             </Link>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-            <div className="lg:col-span-2 space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <div className="lg:col-span-2 space-y-4">
               {cartItems.map((item: any) => (
-                <div key={item.id} className="flex gap-6 p-6 bg-white rounded-3xl shadow-sm border border-gray-100">
-                  <div className="w-24 h-32 bg-gray-50 rounded-xl overflow-hidden shrink-0 relative">
+                <div key={item.id} className="flex gap-4 p-4 bg-white rounded-2xl shadow-sm border border-gray-100">
+                  <div className="w-20 h-28 bg-gray-50 rounded-lg overflow-hidden shrink-0 relative">
                     {item.image_url ? (
                       <img src={item.image_url} alt={item.name} className="w-full h-full object-cover" />
                     ) : (
@@ -229,46 +233,59 @@ export default function CartPage() {
                   <div className="flex flex-col flex-1 justify-between py-1">
                     <div className="flex justify-between items-start">
                       <div>
-                        <h3 className="font-bold text-lg uppercase tracking-tight text-black">{item.name}</h3>
-                        <p className="text-xs text-gray-500 uppercase tracking-widest mt-1">{item.category}</p>
+                        <h3 className="font-bold text-sm uppercase tracking-tight text-black truncate max-w-[150px] sm:max-w-none">{item.name}</h3>
+                        <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">{item.category}</p>
                       </div>
                       <button onClick={() => removeItem(item.id)} className="p-2 text-gray-400 hover:text-red-600 transition">
-                        <Trash2 className="w-5 h-5" />
+                        <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
+                    
+                    {/* 🔥 NEW QUANTITY CONTROLS */}
                     <div className="flex justify-between items-center mt-4">
-                      <div className="flex items-center gap-4 bg-gray-50 px-4 py-2 rounded-full border border-gray-200">
-                        <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Qty: {item.quantity}</span>
+                      <div className="flex items-center border border-gray-200 rounded-full overflow-hidden">
+                        <button 
+                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
+                          className="p-2 hover:bg-gray-100 transition"
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="px-4 text-xs font-bold">{item.quantity}</span>
+                        <button 
+                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
+                          className="p-2 hover:bg-gray-100 transition"
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
                       </div>
-                      <span className="font-extrabold text-xl text-black">₹{item.price * item.quantity}</span>
+                      <span className="font-extrabold text-lg text-black">₹{item.price * item.quantity}</span>
                     </div>
                   </div>
                 </div>
               ))}
             </div>
 
-            <div className="bg-white p-8 rounded-3xl shadow-lg border border-gray-100 h-fit">
-              <h2 className="text-lg font-bold uppercase tracking-widest mb-6 border-b pb-4">Order Summary</h2>
+            <div className="bg-white p-6 rounded-3xl shadow-lg border border-gray-100 h-fit">
+              <h2 className="text-sm font-bold uppercase tracking-widest mb-6 border-b pb-4">Order Summary</h2>
               
-              <div className="space-y-4 mb-6 text-sm font-medium text-gray-600">
+              <div className="space-y-3 mb-6 text-xs font-medium text-gray-600">
                 <div className="flex justify-between">
                   <span>Subtotal ({totalItems} items)</span>
                   <span>₹{subtotal}</span>
                 </div>
 
                 {megaOfferActive && (
-                  <div className="flex justify-between text-green-600 font-bold bg-green-50 p-3 rounded-xl border border-green-100">
-                    <span>🔥 4 for ₹999 Offer Applied!</span>
+                  <div className="flex justify-between text-green-600 font-bold bg-green-50 p-2 rounded-lg border border-green-100">
+                    <span>🔥 Mega Offer Discount</span>
                     <span>- ₹{megaOfferDiscount}</span>
                   </div>
                 )}
               </div>
 
-              <div className="mb-6 border-t border-b py-6">
+              <div className="mb-6 border-t border-b py-6 space-y-4">
                 
-                {/* 📍 BUG 3 FIX: AUTO-DETECT LOCATION BUTTON */}
-                <div className="flex justify-between items-center mb-3">
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Full Delivery Address</label>
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Delivery Address</label>
                   <button 
                     onClick={detectLocation}
                     className="text-[10px] bg-black text-white px-3 py-1.5 rounded-full font-bold uppercase tracking-widest hover:bg-gray-800 flex items-center gap-1 transition-all"
@@ -280,78 +297,50 @@ export default function CartPage() {
 
                 <textarea 
                   rows={2}
-                  placeholder="House No, Street, Landmark..." 
+                  placeholder="House No, Street, City..." 
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-black transition mb-4 text-sm" 
+                  className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-black transition text-sm resize-none" 
                 />
 
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Delivery Pincode</label>
                 <input 
                   type="text" 
                   maxLength={6}
-                  placeholder="Enter 6-digit Pincode" 
+                  placeholder="Pincode (6-digits)" 
                   value={pincode}
                   onChange={(e) => {
-                    setPincode(e.target.value);
+                    setPincode(e.target.value.replace(/\D/g, '')); // Only allow numbers
                     setSelectedCourier(''); 
                   }}
-                  className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-black transition mb-6 text-center tracking-widest font-bold text-lg" 
+                  className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-black transition text-center tracking-widest font-bold text-lg" 
                 />
 
-                {/* 🚚 BUG 2 FIX: COURIER OPTIONS ALWAYS SHOW (WITH FREE STRIKETHROUGH) */}
-                {isTamilNadu && (
-                  <div className="space-y-3">
-                    <p className="text-[10px] uppercase tracking-widest text-green-600 font-bold mb-2">Tamil Nadu Delivery Detected</p>
-                    <label className="flex items-center justify-between p-3 border rounded-xl cursor-pointer hover:bg-gray-50 transition">
-                      <div className="flex items-center gap-3">
-                        <input type="radio" name="courier" value="ST Courier" checked={selectedCourier === 'ST Courier'} onChange={(e) => setSelectedCourier(e.target.value)} className="w-4 h-4 text-black focus:ring-black" />
-                        <span className="text-sm font-bold uppercase tracking-wide">ST Courier {isOver1Kg && !megaOfferActive && '(Over 1kg)'}</span>
-                      </div>
-                      <span className="text-sm font-bold">
-                        {megaOfferActive ? <><span className="line-through text-gray-400 mr-2">₹{stCourierPrice}</span><span className="text-green-600">FREE</span></> : `₹${stCourierPrice}`}
-                      </span>
-                    </label>
-                    <label className="flex items-center justify-between p-3 border rounded-xl cursor-pointer hover:bg-gray-50 transition">
-                      <div className="flex items-center gap-3">
-                        <input type="radio" name="courier" value="India Post TN" checked={selectedCourier === 'India Post TN'} onChange={(e) => setSelectedCourier(e.target.value)} className="w-4 h-4 text-black focus:ring-black" />
-                        <span className="text-sm font-bold uppercase tracking-wide">India Post</span>
-                      </div>
-                      <span className="text-sm font-bold">
-                        {megaOfferActive ? <><span className="line-through text-gray-400 mr-2">₹{indiaPostTnPrice}</span><span className="text-green-600">FREE</span></> : `₹${indiaPostTnPrice}`}
-                      </span>
-                    </label>
-                  </div>
-                )}
-
-                {isOtherState && (
-                  <div className="space-y-3">
-                    <p className="text-[10px] uppercase tracking-widest text-blue-600 font-bold mb-2">National Delivery Detected</p>
-                    <label className="flex items-center justify-between p-3 border rounded-xl cursor-pointer hover:bg-gray-50 transition">
-                      <div className="flex items-center gap-3">
-                        <input type="radio" name="courier" value="Delhivery" checked={selectedCourier === 'Delhivery'} onChange={(e) => setSelectedCourier(e.target.value)} className="w-4 h-4 text-black focus:ring-black" />
-                        <span className="text-sm font-bold uppercase tracking-wide">Delhivery (Fast)</span>
-                      </div>
-                      <span className="text-sm font-bold">
-                        {megaOfferActive ? <><span className="line-through text-gray-400 mr-2">₹{delhiveryPrice}</span><span className="text-green-600">FREE</span></> : `₹${delhiveryPrice}`}
-                      </span>
-                    </label>
-                    <label className="flex items-center justify-between p-3 border rounded-xl cursor-pointer hover:bg-gray-50 transition">
-                      <div className="flex items-center gap-3">
-                        <input type="radio" name="courier" value="India Post National" checked={selectedCourier === 'India Post National'} onChange={(e) => setSelectedCourier(e.target.value)} className="w-4 h-4 text-black focus:ring-black" />
-                        <span className="text-sm font-bold uppercase tracking-wide">India Post (Standard)</span>
-                      </div>
-                      <span className="text-sm font-bold">
-                        {megaOfferActive ? <><span className="line-through text-gray-400 mr-2">₹{indiaPostNatPrice}</span><span className="text-green-600">FREE</span></> : `₹${indiaPostNatPrice}`}
-                      </span>
-                    </label>
+                {/* COURIER OPTIONS */}
+                {(isTamilNadu || isOtherState) && (
+                  <div className="space-y-2 mt-4">
+                     <p className="text-[10px] uppercase tracking-widest font-bold mb-2 {isTamilNadu ? 'text-green-600' : 'text-blue-600'}">
+                      {isTamilNadu ? 'Tamil Nadu Delivery' : 'National Delivery'}
+                    </p>
+                    
+                    {isTamilNadu && (
+                      <>
+                        <CourierOption label={`ST Courier ${isOver1Kg && !megaOfferActive ? '(>1kg)' : ''}`} price={stCourierPrice} selected={selectedCourier} onSelect={setSelectedCourier} isFree={megaOfferActive} />
+                        <CourierOption label="India Post" price={indiaPostTnPrice} selected={selectedCourier} onSelect={setSelectedCourier} isFree={megaOfferActive} />
+                      </>
+                    )}
+                     {isOtherState && (
+                      <>
+                        <CourierOption label="Delhivery (Fast)" price={delhiveryPrice} selected={selectedCourier} onSelect={setSelectedCourier} isFree={megaOfferActive} />
+                        <CourierOption label="India Post (Std)" price={indiaPostNatPrice} selected={selectedCourier} onSelect={setSelectedCourier} isFree={megaOfferActive} />
+                      </>
+                    )}
                   </div>
                 )}
               </div>
 
-              <div className="flex justify-between items-center mb-8">
-                <span className="text-lg font-bold uppercase tracking-widest">Total</span>
-                <span className="text-3xl font-black text-black">₹{finalTotal}</span>
+              <div className="flex justify-between items-center mb-6">
+                <span className="text-sm font-bold uppercase tracking-widest">Total</span>
+                <span className="text-2xl font-black text-black">₹{finalTotal}</span>
               </div>
 
               <button 
@@ -365,16 +354,26 @@ export default function CartPage() {
                   <><ShieldCheck className="w-5 h-5" /> Pay Securely</>
                 )}
               </button>
-              
-              {(!selectedCourier || pincode.length !== 6 || !address) && (
-                <p className="text-center text-[10px] text-red-500 uppercase tracking-widest mt-3 font-bold">
-                  *Please detect/enter your address and select a delivery partner.
-                </p>
-              )}
             </div>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+// Helper component for courier options to keep code clean
+function CourierOption({ label, price, selected, onSelect, isFree }: any) {
+  const value = label.split(' ')[0] + (label.includes('Post') ? ' Post' : '');
+  return (
+    <label className={`flex items-center justify-between p-3 border rounded-xl cursor-pointer transition ${selected === value ? 'border-black bg-gray-50' : 'border-gray-200 hover:bg-gray-50'}`}>
+      <div className="flex items-center gap-3">
+        <input type="radio" name="courier" value={value} checked={selected === value} onChange={(e) => onSelect(e.target.value)} className="w-4 h-4 text-black focus:ring-black accent-black" />
+        <span className="text-xs font-bold uppercase tracking-wide">{label}</span>
+      </div>
+      <span className="text-xs font-bold">
+        {isFree ? <><span className="line-through text-gray-400 mr-2">₹{price}</span><span className="text-green-600">FREE</span></> : `₹${price}`}
+      </span>
+    </label>
   );
 }
