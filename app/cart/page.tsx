@@ -8,7 +8,6 @@ import { supabase } from '../../lib/supabase';
 import { useCart } from '../../context/CartContext';
 
 export default function CartPage() {
-  // 🔥 Get updateQuantity from context
   const { cartItems = [], removeItem = () => {}, updateQuantity = () => {}, clearCart = () => {} } = useCart() || {}; 
   
   const [pincode, setPincode] = useState('');
@@ -30,7 +29,7 @@ export default function CartPage() {
     return nameMatch || catMatch;
   };
 
-  // 🧮 FIXED MATH LOGIC
+  // 🧮 FIXED "SETS OF 4" MATH LOGIC
   const totalItems = cartItems.reduce((sum: any, item: any) => sum + item.quantity, 0);
   const subtotal = cartItems.reduce((sum: any, item: any) => sum + (item.price * item.quantity), 0);
   const totalWeightKg = totalItems * 0.25; 
@@ -39,13 +38,34 @@ export default function CartPage() {
   const isTamilNadu = pincode.startsWith('6') && pincode.length === 6;
   const isOtherState = pincode.length === 6 && !pincode.startsWith('6');
 
+  // 1. Flatten all nighties into an array of individual prices
   const nightyItems = cartItems.filter(isNighty);
-  const nightyCount = nightyItems.reduce((sum: any, item: any) => sum + item.quantity, 0);
-  const megaOfferActive = nightyCount >= 4;
+  let individualNightyPrices: number[] = [];
   
-  // ✅ CORRECT MATH: Calculate total price of ONLY nighties, then subtract 999 to find discount
-  const totalNightyPrice = nightyItems.reduce((sum: number, item: any) => sum + (item.price * item.quantity), 0);
-  const megaOfferDiscount = megaOfferActive ? (totalNightyPrice - 999) : 0;
+  nightyItems.forEach((item: any) => {
+    for (let i = 0; i < item.quantity; i++) {
+      individualNightyPrices.push(item.price);
+    }
+  });
+
+  // 2. Sort them from most expensive to least expensive 
+  individualNightyPrices.sort((a, b) => b - a);
+
+  // 3. Calculate how many "sets of 4" we have
+  const setsOfFour = Math.floor(individualNightyPrices.length / 4);
+  const megaOfferActive = setsOfFour > 0;
+
+  // 4. Calculate the total cost of nighties WITH the offer
+  let finalNightyCost = (setsOfFour * 999);
+
+  // 5. Add the normal price of any leftover nighties
+  for (let i = setsOfFour * 4; i < individualNightyPrices.length; i++) {
+    finalNightyCost += individualNightyPrices[i];
+  }
+
+  // 6. Calculate the exact discount amount
+  const rawNightyTotal = individualNightyPrices.reduce((sum, price) => sum + price, 0);
+  const megaOfferDiscount = megaOfferActive ? (rawNightyTotal - finalNightyCost) : 0;
 
   // 📦 SHIPPING LOGIC
   const stCourierPrice = isOver1Kg ? 100 : 50;
@@ -59,6 +79,7 @@ export default function CartPage() {
   else if (selectedCourier === 'India Post National') shippingCost = indiaPostNatPrice;
   else if (selectedCourier === 'Delhivery') shippingCost = delhiveryPrice;
 
+  // FREE Shipping if they bought at least one Set of 4!
   if (megaOfferActive) {
     shippingCost = 0;
   }
@@ -77,7 +98,6 @@ export default function CartPage() {
             const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
             const data = await res.json();
             
-            // ✅ Forcefully grab postcode if available
             if (data.postcode) {
                  setPincode(data.postcode);
             } else {
@@ -95,7 +115,7 @@ export default function CartPage() {
           alert("Location permission denied! Please type your address manually.");
           setIsLocating(false);
         },
-        { timeout: 10000 } // Add timeout for faster failure reaction
+        { timeout: 10000 }
       );
     } else {
       alert("Your browser does not support GPS location.");
@@ -141,7 +161,7 @@ export default function CartPage() {
 
       if (!data.orderId) {
         console.error("Backend Error:", data);
-        alert('Payment Gateway Error. Please try again later.');
+        alert('Payment Gateway Error. Please check Vercel Environment Variables.');
         setIsProcessing(false);
         return;
       }
@@ -168,7 +188,7 @@ export default function CartPage() {
           if (error) {
             console.error("Supabase Error:", error);
           }
-          // Clear cart regardless of supabase save to prevent double orders
+          
           clearCart(); 
           alert('✨ Payment Successful! Order Placed.');
           router.push('/'); 
@@ -241,7 +261,7 @@ export default function CartPage() {
                       </button>
                     </div>
                     
-                    {/* 🔥 NEW QUANTITY CONTROLS */}
+                    {/* 🔥 QUANTITY CONTROLS */}
                     <div className="flex justify-between items-center mt-4">
                       <div className="flex items-center border border-gray-200 rounded-full overflow-hidden">
                         <button 
@@ -276,7 +296,7 @@ export default function CartPage() {
 
                 {megaOfferActive && (
                   <div className="flex justify-between text-green-600 font-bold bg-green-50 p-2 rounded-lg border border-green-100">
-                    <span>🔥 Mega Offer Discount</span>
+                    <span>🔥 {setsOfFour * 4} for ₹{setsOfFour * 999} Offer!</span>
                     <span>- ₹{megaOfferDiscount}</span>
                   </div>
                 )}
@@ -309,7 +329,7 @@ export default function CartPage() {
                   placeholder="Pincode (6-digits)" 
                   value={pincode}
                   onChange={(e) => {
-                    setPincode(e.target.value.replace(/\D/g, '')); // Only allow numbers
+                    setPincode(e.target.value.replace(/\D/g, '')); 
                     setSelectedCourier(''); 
                   }}
                   className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-black transition text-center tracking-widest font-bold text-lg" 
@@ -318,7 +338,7 @@ export default function CartPage() {
                 {/* COURIER OPTIONS */}
                 {(isTamilNadu || isOtherState) && (
                   <div className="space-y-2 mt-4">
-                     <p className="text-[10px] uppercase tracking-widest font-bold mb-2 {isTamilNadu ? 'text-green-600' : 'text-blue-600'}">
+                     <p className={`text-[10px] uppercase tracking-widest font-bold mb-2 ${isTamilNadu ? 'text-green-600' : 'text-blue-600'}`}>
                       {isTamilNadu ? 'Tamil Nadu Delivery' : 'National Delivery'}
                     </p>
                     
@@ -362,7 +382,7 @@ export default function CartPage() {
   );
 }
 
-// Helper component for courier options to keep code clean
+// Helper component for courier options
 function CourierOption({ label, price, selected, onSelect, isFree }: any) {
   const value = label.split(' ')[0] + (label.includes('Post') ? ' Post' : '');
   return (

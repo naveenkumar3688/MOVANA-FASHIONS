@@ -13,9 +13,18 @@ export default function Home() {
   const [searchQuery, setSearchQuery] = useState('');
 
   // 1. Fetch products when the page loads
+  // 1. Fetch products when the page loads (With Auto-Retry for Supabase Sleep Mode!)
   useEffect(() => {
-    async function fetchProducts() {
+    async function fetchProducts(retryCount = 0) {
       const { data, error } = await supabase.from('products').select('*');
+      
+      // If it fails or returns empty because the database is asleep, try again!
+      if ((error || !data || data.length === 0) && retryCount < 2) {
+        console.log("Database waking up, retrying...");
+        setTimeout(() => fetchProducts(retryCount + 1), 1500); // Wait 1.5 seconds and retry
+        return;
+      }
+
       if (error) {
         console.error("Error fetching products:", error);
       } else {
