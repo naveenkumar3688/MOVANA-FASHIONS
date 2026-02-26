@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Inter, Playfair_Display } from "next/font/google";
 import "./globals.css";
 import Header from "@/components/Header";
-import CartDrawer from "@/components/CartDrawer";
 import { CartProvider } from "@/context/CartContext";
 import { MessageCircle } from 'lucide-react'; // Import WhatsApp icon lookalike
 
@@ -27,7 +26,6 @@ export default function RootLayout({
       <body className={`${inter.className} ${playfair.variable} bg-[#fafafa]`}>
         <CartProvider>
           <Header />
-          <CartDrawer />
           {children}
           
           {/* 💬 WHATSAPP FLOATING BUTTON */}
