@@ -187,7 +187,7 @@ export default function CartPage() {
           } else {
             clearCart(); 
             alert('✨ Payment Successful! Your premium essentials are on the way.');
-            window.location.href = '/'; 
+            window.location.href = `/success?payment_id=${paymentResponse.razorpay_payment_id}`; 
           }
         },
         prefill: {
