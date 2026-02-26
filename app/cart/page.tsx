@@ -38,7 +38,6 @@ export default function CartPage() {
   const isTamilNadu = pincode.startsWith('6') && pincode.length === 6;
   const isOtherState = pincode.length === 6 && !pincode.startsWith('6');
 
-  // 1. Flatten all nighties into an array of individual prices
   const nightyItems = cartItems.filter(isNighty);
   let individualNightyPrices: number[] = [];
   
@@ -48,22 +47,17 @@ export default function CartPage() {
     }
   });
 
-  // 2. Sort them from most expensive to least expensive 
   individualNightyPrices.sort((a, b) => b - a);
 
-  // 3. Calculate how many "sets of 4" we have
   const setsOfFour = Math.floor(individualNightyPrices.length / 4);
   const megaOfferActive = setsOfFour > 0;
 
-  // 4. Calculate the total cost of nighties WITH the offer
   let finalNightyCost = (setsOfFour * 999);
 
-  // 5. Add the normal price of any leftover nighties
   for (let i = setsOfFour * 4; i < individualNightyPrices.length; i++) {
     finalNightyCost += individualNightyPrices[i];
   }
 
-  // 6. Calculate the exact discount amount
   const rawNightyTotal = individualNightyPrices.reduce((sum, price) => sum + price, 0);
   const megaOfferDiscount = megaOfferActive ? (rawNightyTotal - finalNightyCost) : 0;
 
@@ -79,15 +73,13 @@ export default function CartPage() {
   else if (selectedCourier === 'India Post National') shippingCost = indiaPostNatPrice;
   else if (selectedCourier === 'Delhivery') shippingCost = delhiveryPrice;
 
-  // FREE Shipping if they bought at least one Set of 4!
   if (megaOfferActive) {
     shippingCost = 0;
   }
 
-  // Ensure final total is never negative
   const finalTotal = Math.max(0, subtotal - megaOfferDiscount + shippingCost);
 
-  // 📍 FIXED GPS AUTO-DETECT
+  // 📍 GPS AUTO-DETECT
   const detectLocation = () => {
     setIsLocating(true);
     if ('geolocation' in navigator) {
@@ -98,12 +90,7 @@ export default function CartPage() {
             const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
             const data = await res.json();
             
-            if (data.postcode) {
-                 setPincode(data.postcode);
-            } else {
-                 alert("GPS found your city, but couldn't detect the exact Pincode. Please enter it manually.");
-            }
-
+            if (data.postcode) setPincode(data.postcode);
             setAddress(`${data.locality || ''} ${data.city || ''}, ${data.principalSubdivision || data.adminArea || ''}, India`);
             setSelectedCourier(''); 
           } catch (err) {
@@ -123,7 +110,7 @@ export default function CartPage() {
     }
   };
 
-  // 🚀 RAZORPAY CHECKOUT
+  // 🚀 RESTORED ORIGINAL RAZORPAY CHECKOUT LOGIC
   const initializeRazorpay = () => {
     return new Promise((resolve) => {
       const script = document.createElement('script');
@@ -135,8 +122,17 @@ export default function CartPage() {
   };
 
   const handlePayment = async () => {
-    if (!address || pincode.length !== 6 || !selectedCourier) {
-      alert("Please complete delivery details first.");
+    // Basic validation alerts so the user knows exactly what is missing!
+    if (!address) {
+      alert("Please enter your full delivery address.");
+      return;
+    }
+    if (pincode.length !== 6) {
+      alert("Please enter a valid 6-digit Pincode.");
+      return;
+    }
+    if (!selectedCourier && !megaOfferActive) {
+      alert("Please select a delivery partner (ST Courier, India Post, etc.).");
       return;
     }
 
@@ -144,14 +140,14 @@ export default function CartPage() {
     const res = await initializeRazorpay();
 
     if (!res) {
-      alert('Razorpay failed to load. Offline?');
+      alert('Razorpay failed to load. Please check your internet connection.');
       setIsProcessing(false);
       return;
     }
 
     try {
-      const API_URL = `${window.location.origin}/api/create-order`;
-      const response = await fetch(API_URL, {
+      // BACK TO THE OLD WORKING URL!
+      const response = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: finalTotal }),
@@ -160,8 +156,7 @@ export default function CartPage() {
       const data = await response.json();
 
       if (!data.orderId) {
-        console.error("Backend Error:", data);
-        alert('Payment Gateway Error. Please check Vercel Environment Variables.');
+        alert('Server connection error. Please try again.');
         setIsProcessing(false);
         return;
       }
@@ -175,10 +170,13 @@ export default function CartPage() {
         description: 'Premium Essentials',
         theme: { color: '#000000' },
         handler: async function (paymentResponse: any) {
+          
+          const courierToSave = megaOfferActive && !selectedCourier ? 'Free Offer Delivery' : selectedCourier;
+
           const { error } = await supabase.from('orders').insert([{
             customer_name: 'Guest Customer', 
             customer_email: 'hello@movana.in',
-            address: `${address}, Pincode: ${pincode}, Courier: ${selectedCourier}`,
+            address: `${address}, Pincode: ${pincode}, Courier: ${courierToSave}`,
             amount: finalTotal,
             items: cartItems, 
             payment_id: paymentResponse.razorpay_payment_id,
@@ -187,11 +185,12 @@ export default function CartPage() {
 
           if (error) {
             console.error("Supabase Error:", error);
+            alert("Payment successful, but we had trouble saving the order details. Please contact support.");
+          } else {
+            clearCart(); 
+            alert('✨ Payment Successful! Your premium essentials are on the way.');
+            router.push('/'); 
           }
-          
-          clearCart(); 
-          alert('✨ Payment Successful! Order Placed.');
-          router.push('/'); 
         },
         prefill: {
           name: 'Guest Customer',
@@ -208,8 +207,8 @@ export default function CartPage() {
         setIsProcessing(false);
       });
     } catch (error) {
-      console.error("Checkout Error:", error);
-      alert("Connection error during checkout.");
+      console.error(error);
+      alert("Something went wrong during checkout.");
     } finally {
       setIsProcessing(false);
     }
@@ -261,7 +260,6 @@ export default function CartPage() {
                       </button>
                     </div>
                     
-                    {/* 🔥 QUANTITY CONTROLS */}
                     <div className="flex justify-between items-center mt-4">
                       <div className="flex items-center border border-gray-200 rounded-full overflow-hidden">
                         <button 
@@ -335,7 +333,6 @@ export default function CartPage() {
                   className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-black transition text-center tracking-widest font-bold text-lg" 
                 />
 
-                {/* COURIER OPTIONS */}
                 {(isTamilNadu || isOtherState) && (
                   <div className="space-y-2 mt-4">
                      <p className={`text-[10px] uppercase tracking-widest font-bold mb-2 ${isTamilNadu ? 'text-green-600' : 'text-blue-600'}`}>
@@ -363,9 +360,10 @@ export default function CartPage() {
                 <span className="text-2xl font-black text-black">₹{finalTotal}</span>
               </div>
 
+              {/* 🚀 RESTORED ORIGINAL BUTTON LOGIC! */}
               <button 
                 onClick={handlePayment}
-                disabled={!selectedCourier || pincode.length !== 6 || isProcessing || !address}
+                disabled={isProcessing}
                 className="w-full flex justify-center items-center gap-2 bg-black text-white py-4 rounded-xl font-bold uppercase tracking-widest text-sm hover:bg-gray-800 transition shadow-lg disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 {isProcessing ? (
@@ -382,7 +380,6 @@ export default function CartPage() {
   );
 }
 
-// Helper component for courier options
 function CourierOption({ label, price, selected, onSelect, isFree }: any) {
   const value = label.split(' ')[0] + (label.includes('Post') ? ' Post' : '');
   return (
