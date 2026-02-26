@@ -16,20 +16,17 @@ export default function CartPage() {
   const [isProcessing, setIsProcessing] = useState(false);
   const [isLocating, setIsLocating] = useState(false); 
   const [isMounted, setIsMounted] = useState(false); 
-  const router = useRouter();
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // 🧠 SMARTER NIGHTY DETECTOR
   const isNighty = (item: any) => {
     const nameMatch = item?.name?.toLowerCase().includes('night');
     const catMatch = item?.category?.toLowerCase().includes('night') || item?.category?.toLowerCase().includes('women');
     return nameMatch || catMatch;
   };
 
-  // 🧮 FIXED "SETS OF 4" MATH LOGIC
   const totalItems = cartItems.reduce((sum: any, item: any) => sum + item.quantity, 0);
   const subtotal = cartItems.reduce((sum: any, item: any) => sum + (item.price * item.quantity), 0);
   const totalWeightKg = totalItems * 0.25; 
@@ -48,12 +45,10 @@ export default function CartPage() {
   });
 
   individualNightyPrices.sort((a, b) => b - a);
-
   const setsOfFour = Math.floor(individualNightyPrices.length / 4);
   const megaOfferActive = setsOfFour > 0;
 
   let finalNightyCost = (setsOfFour * 999);
-
   for (let i = setsOfFour * 4; i < individualNightyPrices.length; i++) {
     finalNightyCost += individualNightyPrices[i];
   }
@@ -61,7 +56,7 @@ export default function CartPage() {
   const rawNightyTotal = individualNightyPrices.reduce((sum, price) => sum + price, 0);
   const megaOfferDiscount = megaOfferActive ? (rawNightyTotal - finalNightyCost) : 0;
 
-  // 📦 SHIPPING LOGIC
+  // 📦 SHIPPING LOGIC (Fixed to map perfectly)
   const stCourierPrice = isOver1Kg ? 100 : 50;
   const indiaPostTnPrice = 60;
   const delhiveryPrice = 130;
@@ -79,7 +74,6 @@ export default function CartPage() {
 
   const finalTotal = Math.max(0, subtotal - megaOfferDiscount + shippingCost);
 
-  // 📍 GPS AUTO-DETECT
   const detectLocation = () => {
     setIsLocating(true);
     if ('geolocation' in navigator) {
@@ -110,7 +104,6 @@ export default function CartPage() {
     }
   };
 
-  // 🚀 RESTORED ORIGINAL RAZORPAY CHECKOUT LOGIC
   const initializeRazorpay = () => {
     return new Promise((resolve) => {
       const script = document.createElement('script');
@@ -142,7 +135,6 @@ export default function CartPage() {
         body: JSON.stringify({ amount: finalTotal }),
       });
 
-      // Catch HTML error pages from Vercel!
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || `Server responded with status ${response.status}`);
@@ -182,7 +174,8 @@ export default function CartPage() {
           } else {
             clearCart(); 
             alert('✨ Payment Successful! Your premium essentials are on the way.');
-            router.push('/'); 
+            // ⬛ THE BLACK SCREEN FIX: Force a true browser refresh to kill the Razorpay overlay!
+            window.location.href = '/'; 
           }
         },
         prefill: {
@@ -332,16 +325,17 @@ export default function CartPage() {
                       {isTamilNadu ? 'Tamil Nadu Delivery' : 'National Delivery'}
                     </p>
                     
+                    {/* 🚚 THE SHIPPING VALUE BUG IS FIXED HERE! */}
                     {isTamilNadu && (
                       <>
-                        <CourierOption label={`ST Courier ${isOver1Kg && !megaOfferActive ? '(>1kg)' : ''}`} price={stCourierPrice} selected={selectedCourier} onSelect={setSelectedCourier} isFree={megaOfferActive} />
-                        <CourierOption label="India Post" price={indiaPostTnPrice} selected={selectedCourier} onSelect={setSelectedCourier} isFree={megaOfferActive} />
+                        <CourierOption label={`ST Courier ${isOver1Kg && !megaOfferActive ? '(>1kg)' : ''}`} value="ST Courier" price={stCourierPrice} selected={selectedCourier} onSelect={setSelectedCourier} isFree={megaOfferActive} />
+                        <CourierOption label="India Post" value="India Post TN" price={indiaPostTnPrice} selected={selectedCourier} onSelect={setSelectedCourier} isFree={megaOfferActive} />
                       </>
                     )}
                      {isOtherState && (
                       <>
-                        <CourierOption label="Delhivery (Fast)" price={delhiveryPrice} selected={selectedCourier} onSelect={setSelectedCourier} isFree={megaOfferActive} />
-                        <CourierOption label="India Post (Std)" price={indiaPostNatPrice} selected={selectedCourier} onSelect={setSelectedCourier} isFree={megaOfferActive} />
+                        <CourierOption label="Delhivery (Fast)" value="Delhivery" price={delhiveryPrice} selected={selectedCourier} onSelect={setSelectedCourier} isFree={megaOfferActive} />
+                        <CourierOption label="India Post (Std)" value="India Post National" price={indiaPostNatPrice} selected={selectedCourier} onSelect={setSelectedCourier} isFree={megaOfferActive} />
                       </>
                     )}
                   </div>
@@ -372,8 +366,8 @@ export default function CartPage() {
   );
 }
 
-function CourierOption({ label, price, selected, onSelect, isFree }: any) {
-  const value = label.split(' ')[0] + (label.includes('Post') ? ' Post' : '');
+// 🚚 BUG 2: FIXED COURIER OPTION LOGIC TO PASS EXPLICIT VALUE
+function CourierOption({ label, value, price, selected, onSelect, isFree }: any) {
   return (
     <label className={`flex items-center justify-between p-3 border rounded-xl cursor-pointer transition ${selected === value ? 'border-black bg-gray-50' : 'border-gray-200 hover:bg-gray-50'}`}>
       <div className="flex items-center gap-3">
