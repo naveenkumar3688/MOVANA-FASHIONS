@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Trash2, ShieldCheck, ArrowRight, Truck, Loader2, MapPin, Minus, Plus } from 'lucide-react';
+import { Trash2, CreditCard, ArrowRight, Loader2, MapPin, Minus, Plus } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useCart } from '../../context/CartContext';
 
@@ -122,7 +122,6 @@ export default function CartPage() {
   };
 
   const handlePayment = async () => {
-    // Basic validation alerts so the user knows exactly what is missing!
     if (!address) {
       alert("Please enter your full delivery address.");
       return;
@@ -146,7 +145,7 @@ export default function CartPage() {
     }
 
     try {
-      // BACK TO THE OLD WORKING URL!
+      // 🔙 BACK TO THE OLD WORKING URL THAT DOESN'T CRASH!
       const response = await fetch('/api/create-order', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -208,7 +207,7 @@ export default function CartPage() {
       });
     } catch (error) {
       console.error(error);
-      alert("Something went wrong during checkout.");
+      alert("Something went wrong securely connecting to checkout. Please try again.");
     } finally {
       setIsProcessing(false);
     }
@@ -360,16 +359,16 @@ export default function CartPage() {
                 <span className="text-2xl font-black text-black">₹{finalTotal}</span>
               </div>
 
-              {/* 🚀 RESTORED ORIGINAL BUTTON LOGIC! */}
+              {/* 🚀 RESTORED "PAY NOW WITH RAZORPAY" BUTTON! */}
               <button 
                 onClick={handlePayment}
                 disabled={isProcessing}
-                className="w-full flex justify-center items-center gap-2 bg-black text-white py-4 rounded-xl font-bold uppercase tracking-widest text-sm hover:bg-gray-800 transition shadow-lg disabled:bg-gray-300 disabled:cursor-not-allowed"
+                className="w-full flex justify-center items-center gap-2 bg-black text-white py-4 rounded-xl font-bold text-sm hover:bg-gray-800 transition shadow-lg disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 {isProcessing ? (
                   <><Loader2 className="w-5 h-5 animate-spin" /> Processing...</>
                 ) : (
-                  <><ShieldCheck className="w-5 h-5" /> Pay Securely</>
+                  <><CreditCard className="w-5 h-5 mr-1" /> Pay Now with Razorpay</>
                 )}
               </button>
             </div>
