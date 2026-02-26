@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Trash2, ShieldCheck, ArrowRight, Truck, Loader2 } from 'lucide-react';
+import { Trash2, ShieldCheck, ArrowRight, Truck, Loader2, MapPin } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useCart } from '../../context/CartContext';
 
@@ -14,6 +14,7 @@ export default function CartPage() {
   const [address, setAddress] = useState(''); 
   const [selectedCourier, setSelectedCourier] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isLocating, setIsLocating] = useState(false); // 📍 State for the GPS button
   const [isMounted, setIsMounted] = useState(false); 
   const router = useRouter();
 
@@ -30,7 +31,7 @@ export default function CartPage() {
   const isTamilNadu = pincode.startsWith('6') && pincode.length === 6;
   const isOtherState = pincode.length === 6 && !pincode.startsWith('6');
 
-  // 🧠 SMARTER NIGHTY DETECTOR: Checks if 'night' or 'womenswear' is anywhere in name or category
+  // SMARTER NIGHTY DETECTOR
   const isNighty = (item: any) => {
     const nameMatch = item?.name?.toLowerCase().includes('night');
     const catMatch = item?.category?.toLowerCase().includes('night') || item?.category?.toLowerCase().includes('women');
@@ -43,21 +44,56 @@ export default function CartPage() {
   const standardPriceForFour = cartItems.find(isNighty)?.price || 499;
   const megaOfferDiscount = megaOfferActive ? ((standardPriceForFour * 4) - 999) : 0;
 
-  // 📦 SHIPPING LOGIC
+  // 📦 SHIPPING LOGIC (Base Prices)
+  const stCourierPrice = isOver1Kg ? 100 : 50;
+  const indiaPostTnPrice = 60;
+  const delhiveryPrice = 130;
+  const indiaPostNatPrice = 100;
+
+  // Calculate actual applied shipping cost
   let shippingCost = 0;
+  if (selectedCourier === 'ST Courier') shippingCost = stCourierPrice;
+  else if (selectedCourier === 'India Post TN') shippingCost = indiaPostTnPrice;
+  else if (selectedCourier === 'India Post National') shippingCost = indiaPostNatPrice;
+  else if (selectedCourier === 'Delhivery') shippingCost = delhiveryPrice;
+
+  // Force shipping to 0 if Mega Offer is active!
   if (megaOfferActive) {
-    shippingCost = 0; 
-  } else if (selectedCourier === 'ST Courier') {
-    shippingCost = isOver1Kg ? 100 : 50;
-  } else if (selectedCourier === 'India Post TN') {
-    shippingCost = 60; 
-  } else if (selectedCourier === 'India Post National') {
-    shippingCost = 100; 
-  } else if (selectedCourier === 'Delhivery') {
-    shippingCost = 130; 
+    shippingCost = 0;
   }
 
   const finalTotal = Math.max(0, subtotal - megaOfferDiscount + shippingCost);
+
+  // 📍 GPS AUTO-DETECT FUNCTION
+  const detectLocation = () => {
+    setIsLocating(true);
+    if ('geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          try {
+            const { latitude, longitude } = position.coords;
+            // Free public reverse-geocoding API
+            const res = await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`);
+            const data = await res.json();
+            
+            if (data.postcode) setPincode(data.postcode);
+            setAddress(`${data.locality || data.city || ''}, ${data.principalSubdivision || data.adminArea || ''}, India`);
+            setSelectedCourier(''); // Reset courier so they pick one based on new location
+          } catch (err) {
+            alert("Could not perfectly detect location. Please type it in.");
+          }
+          setIsLocating(false);
+        },
+        () => {
+          alert("Location permission denied! Please type your address manually.");
+          setIsLocating(false);
+        }
+      );
+    } else {
+      alert("Your browser does not support GPS location.");
+      setIsLocating(false);
+    }
+  };
 
   // 🚀 RAZORPAY & SUPABASE CHECKOUT
   const initializeRazorpay = () => {
@@ -71,8 +107,8 @@ export default function CartPage() {
   };
 
   const handlePayment = async () => {
-    if (!address || pincode.length !== 6) {
-      alert("Please enter your full address and a valid pincode.");
+    if (!address || pincode.length !== 6 || !selectedCourier) {
+      alert("Please enter your full address, pincode, and select a courier option.");
       return;
     }
 
@@ -86,7 +122,10 @@ export default function CartPage() {
     }
 
     try {
-      const response = await fetch('/api/create-order', {
+      // 🛠️ BUG 1 FIX: Using absolute URL to prevent Vercel routing errors
+      const API_URL = `${window.location.origin}/api/create-order`;
+      
+      const response = await fetch(API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ amount: finalTotal }),
@@ -95,7 +134,8 @@ export default function CartPage() {
       const data = await response.json();
 
       if (!data.orderId) {
-        alert('Server error: Make sure your Razorpay keys are safely added to Vercel!');
+        console.error("Backend Error:", data);
+        alert('Server connection error. Please make sure your Razorpay keys are loaded in Vercel!');
         setIsProcessing(false);
         return;
       }
@@ -112,7 +152,7 @@ export default function CartPage() {
           const { error } = await supabase.from('orders').insert([{
             customer_name: 'Guest Customer', 
             customer_email: 'hello@movana.in',
-            address: `${address}, Pincode: ${pincode}, Courier: ${selectedCourier || 'Free Offer Delivery'}`,
+            address: `${address}, Pincode: ${pincode}, Courier: ${selectedCourier}`,
             amount: finalTotal,
             items: cartItems, 
             payment_id: paymentResponse.razorpay_payment_id,
@@ -139,12 +179,12 @@ export default function CartPage() {
       paymentObject.open();
       
       paymentObject.on('payment.failed', function () {
-        alert('Payment failed or cancelled.');
+        alert('Payment failed or cancelled. Please try again.');
         setIsProcessing(false);
       });
     } catch (error) {
-      console.error(error);
-      alert("Something went wrong during checkout.");
+      console.error("Checkout Error:", error);
+      alert("Something went wrong securely connecting to checkout. Trying again later.");
     } finally {
       setIsProcessing(false);
     }
@@ -225,7 +265,19 @@ export default function CartPage() {
               </div>
 
               <div className="mb-6 border-t border-b py-6">
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-3">Full Delivery Address</label>
+                
+                {/* 📍 BUG 3 FIX: AUTO-DETECT LOCATION BUTTON */}
+                <div className="flex justify-between items-center mb-3">
+                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Full Delivery Address</label>
+                  <button 
+                    onClick={detectLocation}
+                    className="text-[10px] bg-black text-white px-3 py-1.5 rounded-full font-bold uppercase tracking-widest hover:bg-gray-800 flex items-center gap-1 transition-all"
+                  >
+                    {isLocating ? <Loader2 className="w-3 h-3 animate-spin" /> : <MapPin className="w-3 h-3" />}
+                    Auto-Detect
+                  </button>
+                </div>
+
                 <textarea 
                   rows={2}
                   placeholder="House No, Street, Landmark..." 
@@ -244,56 +296,55 @@ export default function CartPage() {
                     setPincode(e.target.value);
                     setSelectedCourier(''); 
                   }}
-                  className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-black transition mb-4 text-center tracking-widest font-bold text-lg" 
+                  className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-black transition mb-6 text-center tracking-widest font-bold text-lg" 
                 />
 
-                {isTamilNadu && !megaOfferActive && (
+                {/* 🚚 BUG 2 FIX: COURIER OPTIONS ALWAYS SHOW (WITH FREE STRIKETHROUGH) */}
+                {isTamilNadu && (
                   <div className="space-y-3">
                     <p className="text-[10px] uppercase tracking-widest text-green-600 font-bold mb-2">Tamil Nadu Delivery Detected</p>
                     <label className="flex items-center justify-between p-3 border rounded-xl cursor-pointer hover:bg-gray-50 transition">
                       <div className="flex items-center gap-3">
-                        <input type="radio" name="courier" value="ST Courier" onChange={(e) => setSelectedCourier(e.target.value)} className="w-4 h-4 text-black focus:ring-black" />
-                        <span className="text-sm font-bold uppercase tracking-wide">ST Courier {isOver1Kg && '(Over 1kg)'}</span>
+                        <input type="radio" name="courier" value="ST Courier" checked={selectedCourier === 'ST Courier'} onChange={(e) => setSelectedCourier(e.target.value)} className="w-4 h-4 text-black focus:ring-black" />
+                        <span className="text-sm font-bold uppercase tracking-wide">ST Courier {isOver1Kg && !megaOfferActive && '(Over 1kg)'}</span>
                       </div>
-                      <span className="text-sm font-bold">₹{isOver1Kg ? 100 : 50}</span>
+                      <span className="text-sm font-bold">
+                        {megaOfferActive ? <><span className="line-through text-gray-400 mr-2">₹{stCourierPrice}</span><span className="text-green-600">FREE</span></> : `₹${stCourierPrice}`}
+                      </span>
                     </label>
                     <label className="flex items-center justify-between p-3 border rounded-xl cursor-pointer hover:bg-gray-50 transition">
                       <div className="flex items-center gap-3">
-                        <input type="radio" name="courier" value="India Post TN" onChange={(e) => setSelectedCourier(e.target.value)} className="w-4 h-4 text-black focus:ring-black" />
+                        <input type="radio" name="courier" value="India Post TN" checked={selectedCourier === 'India Post TN'} onChange={(e) => setSelectedCourier(e.target.value)} className="w-4 h-4 text-black focus:ring-black" />
                         <span className="text-sm font-bold uppercase tracking-wide">India Post</span>
                       </div>
-                      <span className="text-sm font-bold">₹60</span>
+                      <span className="text-sm font-bold">
+                        {megaOfferActive ? <><span className="line-through text-gray-400 mr-2">₹{indiaPostTnPrice}</span><span className="text-green-600">FREE</span></> : `₹${indiaPostTnPrice}`}
+                      </span>
                     </label>
                   </div>
                 )}
 
-                {isOtherState && !megaOfferActive && (
+                {isOtherState && (
                   <div className="space-y-3">
                     <p className="text-[10px] uppercase tracking-widest text-blue-600 font-bold mb-2">National Delivery Detected</p>
                     <label className="flex items-center justify-between p-3 border rounded-xl cursor-pointer hover:bg-gray-50 transition">
                       <div className="flex items-center gap-3">
-                        <input type="radio" name="courier" value="Delhivery" onChange={(e) => setSelectedCourier(e.target.value)} className="w-4 h-4 text-black focus:ring-black" />
+                        <input type="radio" name="courier" value="Delhivery" checked={selectedCourier === 'Delhivery'} onChange={(e) => setSelectedCourier(e.target.value)} className="w-4 h-4 text-black focus:ring-black" />
                         <span className="text-sm font-bold uppercase tracking-wide">Delhivery (Fast)</span>
                       </div>
-                      <span className="text-sm font-bold">₹130</span>
+                      <span className="text-sm font-bold">
+                        {megaOfferActive ? <><span className="line-through text-gray-400 mr-2">₹{delhiveryPrice}</span><span className="text-green-600">FREE</span></> : `₹${delhiveryPrice}`}
+                      </span>
                     </label>
                     <label className="flex items-center justify-between p-3 border rounded-xl cursor-pointer hover:bg-gray-50 transition">
                       <div className="flex items-center gap-3">
-                        <input type="radio" name="courier" value="India Post National" onChange={(e) => setSelectedCourier(e.target.value)} className="w-4 h-4 text-black focus:ring-black" />
+                        <input type="radio" name="courier" value="India Post National" checked={selectedCourier === 'India Post National'} onChange={(e) => setSelectedCourier(e.target.value)} className="w-4 h-4 text-black focus:ring-black" />
                         <span className="text-sm font-bold uppercase tracking-wide">India Post (Standard)</span>
                       </div>
-                      <span className="text-sm font-bold">₹100</span>
+                      <span className="text-sm font-bold">
+                        {megaOfferActive ? <><span className="line-through text-gray-400 mr-2">₹{indiaPostNatPrice}</span><span className="text-green-600">FREE</span></> : `₹${indiaPostNatPrice}`}
+                      </span>
                     </label>
-                  </div>
-                )}
-
-                {megaOfferActive && (
-                  <div className="bg-green-600 text-white p-4 rounded-xl flex items-center gap-3">
-                    <Truck className="w-6 h-6" />
-                    <div>
-                      <p className="font-bold text-sm uppercase tracking-wide">Free Shipping Unlocked!</p>
-                      <p className="text-xs text-green-100">Your Mega Offer includes free delivery anywhere in India.</p>
-                    </div>
                   </div>
                 )}
               </div>
@@ -305,7 +356,7 @@ export default function CartPage() {
 
               <button 
                 onClick={handlePayment}
-                disabled={(!megaOfferActive && (!selectedCourier || pincode.length !== 6)) || isProcessing || !address}
+                disabled={!selectedCourier || pincode.length !== 6 || isProcessing || !address}
                 className="w-full flex justify-center items-center gap-2 bg-black text-white py-4 rounded-xl font-bold uppercase tracking-widest text-sm hover:bg-gray-800 transition shadow-lg disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 {isProcessing ? (
@@ -315,9 +366,9 @@ export default function CartPage() {
                 )}
               </button>
               
-              {(!megaOfferActive && (!selectedCourier || pincode.length !== 6 || !address)) && (
+              {(!selectedCourier || pincode.length !== 6 || !address) && (
                 <p className="text-center text-[10px] text-red-500 uppercase tracking-widest mt-3 font-bold">
-                  *Please enter your full address, valid pincode, and select a courier.
+                  *Please detect/enter your address and select a delivery partner.
                 </p>
               )}
             </div>
