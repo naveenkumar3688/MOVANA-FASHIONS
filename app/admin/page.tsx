@@ -21,7 +21,7 @@ export default function AdminPage() {
     const checkAdmin = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       // Replace this with your actual admin email!
-      if (!session || session.user.email !== 'hello@movana.in') {
+      if (!session || session.user.email !== 'naveenkumark1206@gmail.com') {
         alert("Access Denied. Admins only.");
         router.push('/');
         return;
