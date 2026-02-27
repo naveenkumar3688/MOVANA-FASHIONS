@@ -9,17 +9,42 @@ export default function HomePage() {
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
-  // 🎠 BANNER CAROUSEL STATE
   const [currentSlide, setCurrentSlide] = useState(0);
   
-  // Add as many banner images as you want here!
   const banners = [
-    "/offer-woman.png", // Your main banner
-    "https://images.unsplash.com/photo-1583391733958-d6e06b72a690?q=80&w=1600&auto=format&fit=crop", // Example slide 2
-    "https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1600&auto=format&fit=crop"  // Example slide 3
+    "/offer-woman.png", 
+    "https://images.unsplash.com/photo-1583391733958-d6e06b72a690?q=80&w=1600&auto=format&fit=crop", 
+    "https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1600&auto=format&fit=crop"  
   ];
 
-  // Auto-Slide Logic for Banners (Slides every 4 seconds)
+  // 👗 THE 4 MOVANA MODELS DATA
+  const movanaModels = [
+    {
+      name: "Titanic",
+      desc: "The Classic Comfort Cut",
+      // Replace this with your actual Titanic image URL!
+      image: "https://images.unsplash.com/photo-1515347619152-14120dfbd082?q=80&w=800&auto=format&fit=crop" 
+    },
+    {
+      name: "Zip",
+      desc: "Smart & Practical",
+      // Replace this with your actual Zip image URL!
+      image: "https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?q=80&w=800&auto=format&fit=crop" 
+    },
+    {
+      name: "Frock",
+      desc: "Flared Premium Comfort",
+      // Replace this with your actual Frock image URL!
+      image: "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?q=80&w=800&auto=format&fit=crop" 
+    },
+    {
+      name: "Elastic",
+      desc: "Smocked Perfect Fit",
+      // This is the premium elastic placeholder I found for you!
+      image: "" 
+    }
+  ];
+
   useEffect(() => {
     const slideTimer = setInterval(() => {
       setCurrentSlide((prev) => (prev + 1) % banners.length);
@@ -27,11 +52,9 @@ export default function HomePage() {
     return () => clearInterval(slideTimer);
   }, [banners.length]);
 
-  // Fetch Products
   useEffect(() => {
     async function fetchProducts(retryCount = 0) {
       const { data, error } = await supabase.from('products').select('*');
-      
       if ((error || !data || data.length === 0) && retryCount < 2) {
         setTimeout(() => fetchProducts(retryCount + 1), 1500); 
         return;
@@ -45,7 +68,7 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#fafafa] font-sans pb-20">
       
-      {/* 🔥 THE NEW INTERACTIVE SLIDING CAROUSEL */}
+      {/* 🎠 CAROUSEL HERO */}
       <section className="w-full bg-[#fafafa] relative overflow-hidden group">
         <div 
           className="flex transition-transform duration-700 ease-in-out"
@@ -53,29 +76,45 @@ export default function HomePage() {
         >
           {banners.map((img, index) => (
             <Link key={index} href="#catalogue" className="w-full shrink-0 block cursor-pointer">
-              <img 
-                src={img} 
-                alt={`MOVANA Offer ${index + 1}`} 
-                className="w-full h-auto object-cover md:object-contain bg-rose-50/50"
-              />
+              <img src={img} alt={`MOVANA Offer ${index + 1}`} className="w-full h-auto object-cover md:object-contain bg-rose-50/50" />
             </Link>
           ))}
         </div>
-
-        {/* 🟢 Navigation Dots */}
         <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20">
           {banners.map((_, idx) => (
-            <button 
-              key={idx}
-              onClick={() => setCurrentSlide(idx)} 
-              className={`w-3 h-3 rounded-full transition-all duration-300 shadow-md ${idx === currentSlide ? 'bg-black scale-125 w-6' : 'bg-gray-400 hover:bg-gray-600'}`} 
-            />
+            <button key={idx} onClick={() => setCurrentSlide(idx)} className={`w-3 h-3 rounded-full transition-all duration-300 shadow-md ${idx === currentSlide ? 'bg-black scale-125 w-6' : 'bg-gray-400 hover:bg-gray-600'}`} />
           ))}
         </div>
       </section>
 
-      {/* 👗 CATALOGUE SECTION */}
-      <section id="catalogue" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 mt-4">
+      {/* ✨ NEW: SHOP BY MODEL SECTION ✨ */}
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 mt-4">
+        <div className="text-center mb-12">
+          <h2 className="text-2xl md:text-3xl font-black uppercase tracking-widest mb-3 text-black">Shop By Model</h2>
+          <p className="text-gray-500 text-xs font-bold uppercase tracking-widest">Discover your perfect fit</p>
+          <div className="w-16 h-1 bg-black mx-auto mt-6"></div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+          {movanaModels.map((model, index) => (
+            <Link href="#catalogue" key={index} className="group relative rounded-3xl overflow-hidden aspect-[4/5] shadow-sm cursor-pointer block bg-black">
+              <img 
+                src={model.image} 
+                alt={model.name} 
+                className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+              <div className="absolute bottom-0 left-0 right-0 p-6 text-center transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
+                <h3 className="text-white text-xl md:text-2xl font-black uppercase tracking-widest mb-1">{model.name}</h3>
+                <p className="text-gray-300 text-[10px] font-bold uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity duration-500 delay-100">{model.desc}</p>
+              </div>
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      {/* 👗 LATEST ARRIVALS CATALOGUE */}
+      <section id="catalogue" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="text-center mb-16">
           <h2 className="text-3xl font-black uppercase tracking-widest mb-4 text-black">Latest Arrivals</h2>
           <div className="w-24 h-1 bg-black mx-auto"></div>
@@ -96,11 +135,7 @@ export default function HomePage() {
               <Link href={`/product/${product.id}`} key={product.id} className="group">
                 <div className="bg-gray-100 rounded-3xl overflow-hidden aspect-[3/4] mb-4 relative shadow-sm border border-gray-200">
                   {product.image_url ? (
-                    <img 
-                      src={product.image_url} 
-                      alt={product.name} 
-                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" 
-                    />
+                    <img src={product.image_url} alt={product.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-bold uppercase tracking-widest">No Image</div>
                   )}
