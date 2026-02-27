@@ -40,7 +40,7 @@ export default function HomePage() {
     {
       name: "Elastic",
       desc: "Smocked Perfect Fit",
-      video: null, // No video yet, so it uses the image below
+      video: "/elastic.mp4", // No video yet, so it uses the image below
       image: "/elastic.jpg" // 👈 Make sure this is in your public folder!
     }
   ];
