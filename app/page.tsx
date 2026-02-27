@@ -19,11 +19,11 @@ export default function HomePage() {
 
   // 👗 MOVANA MODELS - NOW USING YOUR LOCAL FILES!
   const movanaModels = [
-    {
+   {
       name: "Titanic",
       desc: "The Classic Comfort Cut",
-      video: "/titanic.mp4", // 👈 Now it pulls directly from your public folder!
-      image: "/titanic.jpg" 
+      video: null, // 👈 Change this to null temporarily!
+      image: "/titanic.jpg" // 👈 Assuming you put a picture here!
     },
     {
       name: "Zip",
