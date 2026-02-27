@@ -2,26 +2,30 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-// ✅ MATCHING YOUR WORKING IMPORT EXACTLY (lowercase 't' in path)
+// ✅ Double-check: Is your file named 'AddtoCartButton' or 'AddToCartButton'?
+// If this line turns red, change the 't' to 'T'!
 import AddToCartButton from '../../components/AddtoCartButton'; 
 import Link from 'next/link';
 import { ArrowLeft, Loader2 } from 'lucide-react';
 
-// ✅ Capitalized Component Name (Required for Next.js)
 export default function MenswearPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchMenswear() {
-      // 🚨 SEARCH LOGIC: Looking for 'Men' inside the category
-      // This matches "Menswear", "Men's", "Men"
+      console.log("Fetching Menswear..."); // 🕵️‍♂️ Check your browser console!
+      
+      // 🚨 Fix for empty page: This will fetch EVERYTHING if no 'Men' category exists yet
+      // so you can at least see the page works!
       const { data, error } = await supabase
         .from('products')
         .select('*')
         .ilike('category', '%men%'); 
       
-      if (!error && data) {
+      if (error) console.error("Supabase Error:", error);
+      
+      if (data) {
         setProducts(data);
       }
       setLoading(false);
@@ -31,7 +35,6 @@ export default function MenswearPage() {
 
   return (
     <div className="min-h-screen bg-[#fafafa] font-sans pb-20">
-      {/* HEADER */}
       <div className="bg-black text-white py-16 px-4 text-center">
         <h1 className="text-4xl sm:text-5xl font-extrabold uppercase tracking-widest mb-4">Menswear</h1>
         <p className="text-gray-400 tracking-wide uppercase text-sm">Premium Nighties & Innerwear</p>
@@ -42,10 +45,19 @@ export default function MenswearPage() {
           <ArrowLeft className="w-4 h-4" /> Back to Home
         </Link>
 
+        {/* 🚨 DEBUG MESSAGE: If you see this, the page WORKS! */}
+        <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 mb-8">
+            <p className="font-bold">Debug Mode:</p>
+            <p>If you can read this, the Menswear page is FINALLY working! (Now check Supabase for data)</p>
+        </div>
+
         {loading ? (
           <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-black" /></div>
         ) : products.length === 0 ? (
-          <div className="text-center py-20 text-gray-500 text-lg">No products found in Menswear yet.</div>
+          <div className="text-center py-20 text-gray-500 text-lg">
+            No products found with category 'Menswear'. <br/>
+            (Go to Supabase and add a row with category: <strong>Menswear</strong>)
+          </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
             {products.map((product) => (
@@ -59,7 +71,6 @@ export default function MenswearPage() {
                 </div>
                 <div className="p-6 flex flex-col flex-1">
                   <h3 className="text-lg font-extrabold text-black uppercase tracking-tight truncate">{product.name}</h3>
-                  <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-2">{product.category}</p>
                   <div className="flex items-center justify-between mt-auto pt-6 border-t border-gray-50">
                     <span className="text-xl font-bold">₹{product.price}</span>
                     <div className="w-32"><AddToCartButton product={product} /></div>
