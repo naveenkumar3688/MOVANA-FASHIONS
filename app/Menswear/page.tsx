@@ -2,35 +2,38 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../../lib/supabase';
-import AddToCartButton from '../../components/AddtoCartButton';
+// CHECK THIS PATH: Make sure the file name matches exactly! 
+// Usually it is 'AddToCartButton' with a capital T
+import AddToCartButton from '../../components/AddtoCartButton'; 
 import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Loader2 } from 'lucide-react';
 
-export default function menswearPage() {
+// 🚨 COMPONENT NAME FIXED (Must start with Capital Letter)
+export default function MenswearPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchmenswear() {
-      // 🚨 Notice the .eq() here! It ONLY fetches Womenswear!
+    async function fetchMenswear() {
+      // 🚨 UPDATED LOGIC: Searching for 'Mens' or 'Men'
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .ilike('category', '%mens%'); // Looks for "Womenswear" or "Women"
+        .ilike('category', '%men%'); // This grabs 'Menswear', 'Men', etc.
       
       if (!error && data) {
         setProducts(data);
       }
       setLoading(false);
     }
-    fetchmenswear();
+    fetchMenswear();
   }, []);
 
   return (
     <div className="min-h-screen bg-[#fafafa] font-sans pb-20">
       {/* HEADER */}
       <div className="bg-black text-white py-16 px-4 text-center">
-        <h1 className="text-4xl sm:text-5xl font-extrabold uppercase tracking-widest mb-4">menswear</h1>
+        <h1 className="text-4xl sm:text-5xl font-extrabold uppercase tracking-widest mb-4">Menswear</h1>
         <p className="text-gray-400 tracking-wide uppercase text-sm">Premium Nighties & Innerwear</p>
       </div>
 
@@ -40,7 +43,7 @@ export default function menswearPage() {
         </Link>
 
         {loading ? (
-          <div className="text-center py-20 text-gray-500 font-bold uppercase tracking-widest">Loading Collection...</div>
+           <div className="flex justify-center py-20"><Loader2 className="w-8 h-8 animate-spin text-black" /></div>
         ) : products.length === 0 ? (
           <div className="text-center py-20 text-gray-500 text-lg">No products found in menswear yet.</div>
         ) : (
@@ -56,9 +59,10 @@ export default function menswearPage() {
                 </div>
                 <div className="p-6 flex flex-col flex-1">
                   <h3 className="text-lg font-extrabold text-black uppercase tracking-tight truncate">{product.name}</h3>
-                  <p className="text-gray-500 text-sm mt-2 line-clamp-2 min-h-[40px]">{product.description}</p>
+                  <p className="text-gray-500 text-[10px] font-bold uppercase tracking-widest mb-2">{product.category}</p>
                   <div className="flex items-center justify-between mt-auto pt-6 border-t border-gray-50">
                     <span className="text-xl font-bold">₹{product.price}</span>
+                    {/* Make sure this button component actually exists in your components folder! */}
                     <div className="w-32"><AddToCartButton product={product} /></div>
                   </div>
                 </div>
