@@ -17,35 +17,31 @@ export default function HomePage() {
     "https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1600&auto=format&fit=crop"  
   ];
 
-  // 👗 MOVANA MODELS - NOW WITH AUTO-PLAYING VIDEOS!
+  // 👗 MOVANA MODELS - NOW USING YOUR LOCAL FILES!
   const movanaModels = [
     {
       name: "Titanic",
       desc: "The Classic Comfort Cut",
-      // 🎥 The Red Floral Model Video
-      video: "http://googleusercontent.com/generated_video_content/7675566835068970734",
+      video: "/titanic.mp4", // 👈 Now it pulls directly from your public folder!
       image: "/titanic.jpg" 
     },
     {
       name: "Zip",
       desc: "Smart & Practical",
-      // 🎥 The Blue Model Video
-      video: "http://googleusercontent.com/generated_video_content/15478717402285050267",
+      video: "/zip.mp4", // 👈 Local file!
       image: "/zip.jpg" 
     },
     {
       name: "Frock",
       desc: "Flared Premium Comfort",
-      // 🎥 The Green Model Video
-      video: "http://googleusercontent.com/generated_video_content/6083131007319144240",
+      video: "/frock.mp4", // 👈 Local file!
       image: "/frock.jpg" 
     },
     {
       name: "Elastic",
       desc: "Smocked Perfect Fit",
-      // No video for Elastic yet, so it perfectly falls back to your image!
-      video: null,
-      image: "/elastic.jpg" 
+      video: null, // No video yet, so it uses the image below
+      image: "/elastic.jpg" // 👈 Make sure this is in your public folder!
     }
   ];
 
