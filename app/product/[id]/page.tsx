@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '../../../lib/supabase';
 import { useCart } from '../../../context/CartContext';
-// Added Home icon!
 import { ShoppingBag, Zap, Truck, ShieldCheck, Loader2, Home } from 'lucide-react';
 
 export default function ProductPage() {
@@ -15,7 +14,7 @@ export default function ProductPage() {
 
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedSize, setSelectedSize] = useState(''); // Starts empty!
+  const [selectedSize, setSelectedSize] = useState(''); 
   
   const [mainImage, setMainImage] = useState<string>('');
   const [allImages, setAllImages] = useState<string[]>([]);
@@ -32,12 +31,10 @@ export default function ProductPage() {
       } else if (data) {
         setProduct(data);
         
-        // Setup Images
         const images = data.gallery_images && data.gallery_images.length > 0 ? data.gallery_images : [data.image_url].filter(Boolean);
         setAllImages(images);
         if (images.length > 0) setMainImage(images[0]);
         
-        // Smart Size Selection: Automatically pick the first size if sizes exist!
         if (data.sizes && data.sizes.length > 0) {
           setSelectedSize(data.sizes[0]);
         }
@@ -47,7 +44,6 @@ export default function ProductPage() {
     fetchProduct();
   }, [params.id, router]);
 
-  // ⏱️ AUTO-SLIDE MAGIC
   useEffect(() => {
     if (allImages.length <= 1) return;
     const interval = setInterval(() => {
@@ -59,34 +55,45 @@ export default function ProductPage() {
     return () => clearInterval(interval);
   }, [allImages]);
 
-  // 🛒 FIXED ADD TO CART
+  // 🛒 UPGRADED ADD TO CART LOGIC
   const handleAddToCart = () => {
-    // Check if the product needs a size, but none is selected
+    // 1. Stop them if they need a size but haven't picked one
     if (product.sizes && product.sizes.length > 0 && !selectedSize) {
       alert("Please select a size first!");
-      return;
+      return false; // Returns false so "Buy Now" knows it failed!
     }
 
-    // Only append the size to the name IF the product actually has sizes!
+    // 2. Add the size to the name (e.g., "Grand Nighty (Size: XL)")
     const cartName = product.sizes && product.sizes.length > 0 
       ? `${product.name} (Size: ${selectedSize})` 
       : product.name;
 
+    // 3. 🚨 THE SECRET FIX: Create a unique ID combining the product ID and the size!
+    // This stops XL and XXL from overwriting each other in the cart.
+    const uniqueCartId = product.sizes && product.sizes.length > 0 
+      ? `${product.id}-${selectedSize}` 
+      : product.id;
+
     addItem({
-      id: product.id,
+      id: uniqueCartId, // Using our new smart ID
       name: cartName,
       price: product.price,
       image_url: mainImage,
       category: product.category,
       quantity: 1
     });
+    
     alert('✨ Added to Cart!');
+    return true; // Returns true so "Buy Now" knows it succeeded!
   };
 
-  // ⚡ FIXED BUY NOW (Adds to cart and instantly redirects to cart page)
+  // ⚡ UPGRADED BUY NOW LOGIC
   const handleBuyNow = () => {
-    handleAddToCart();
-    router.push('/cart');
+    // Only go to the cart if the item actually successfully added!
+    const success = handleAddToCart();
+    if (success) {
+      router.push('/cart');
+    }
   };
 
   if (loading) {
@@ -98,14 +105,12 @@ export default function ProductPage() {
     <div className="min-h-screen bg-black text-white font-sans pb-20 pt-8">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* 🏠 HOME BUTTON */}
         <Link href="/" className="inline-flex items-center gap-2 text-gray-400 hover:text-white transition text-xs font-bold uppercase tracking-widest mb-8">
           <Home className="w-4 h-4" /> Back to Home
         </Link>
         
         <div className="flex flex-col md:flex-row gap-12 items-start">
           
-          {/* 📸 GALLERY SECTION */}
           <div className="w-full md:w-1/2 flex flex-col gap-4">
             <div className="w-full aspect-[3/4] bg-white rounded-2xl overflow-hidden shadow-2xl relative">
               {allImages.map((img) => (
@@ -124,13 +129,11 @@ export default function ProductPage() {
             )}
           </div>
 
-          {/* 🛍️ PRODUCT DETAILS */}
           <div className="w-full md:w-1/2 flex flex-col justify-center">
             <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">{product.category}</p>
             <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tight mb-4 leading-none">{product.name}</h1>
             <p className="text-3xl font-bold mb-8">₹{product.price}</p>
 
-            {/* 📏 SMART SIZE SELECTOR (Only shows if product has sizes!) */}
             {product.sizes && product.sizes.length > 0 && (
               <div className="mb-8">
                 <p className="text-xs font-bold uppercase tracking-widest mb-4">Select Size</p>
@@ -150,9 +153,7 @@ export default function ProductPage() {
               </div>
             )}
 
-            {/* ⚡ ACTION BUTTONS */}
             <div className="flex flex-col gap-4 mb-10 mt-2">
-              {/* Buy Now Button has an onClick now! */}
               <button onClick={handleBuyNow} className="w-full bg-white text-black py-4 rounded-full font-bold uppercase tracking-widest text-sm hover:bg-gray-200 transition flex justify-center items-center gap-2">
                 <Zap className="w-4 h-4" /> Buy It Now
               </button>
@@ -162,7 +163,6 @@ export default function ProductPage() {
               </button>
             </div>
 
-            {/* TRUST BADGES */}
             <div className="space-y-4">
               <div className="flex items-center gap-3 text-sm font-medium text-gray-300"><Truck className="w-5 h-5 text-green-500" /> Fast Delivery Across India</div>
               <div className="flex items-center gap-3 text-sm font-medium text-gray-300"><ShieldCheck className="w-5 h-5 text-blue-500" /> 100% Secure Razorpay Checkout</div>
