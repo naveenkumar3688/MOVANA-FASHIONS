@@ -9,7 +9,6 @@ export default function AdminPage() {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('NIGHTIES');
-  // 📏 NEW STATE FOR SIZES
   const [sizesInput, setSizesInput] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
@@ -18,10 +17,13 @@ export default function AdminPage() {
   
   const router = useRouter();
 
+  // 🔒 SECURE ADMIN LOGIN CHECK (Updated with your email!)
   useEffect(() => {
     const checkAdmin = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session || session.user.email !== 'hello@movana.in') {
+      
+      // The bouncer now checks for your exact email!
+      if (!session || session.user.email !== 'naveenkumark1206@gmail.com') {
         alert("Access Denied. Admins only.");
         router.push('/');
         return;
@@ -62,7 +64,7 @@ export default function AdminPage() {
         uploadedUrls.push(publicUrlData.publicUrl);
       }
 
-      // 📏 SMART SIZE FORMATTER (Turns "XL, XXL" into an array, or null if empty)
+      // 📏 SMART SIZE FORMATTER
       const sizesArray = sizesInput.trim() ? sizesInput.split(',').map(s => s.trim().toUpperCase()) : null;
 
       const { error: dbError } = await supabase.from('products').insert([{
@@ -71,7 +73,7 @@ export default function AdminPage() {
         category,
         image_url: uploadedUrls[0],
         gallery_images: uploadedUrls,
-        sizes: sizesArray // Saves the custom sizes!
+        sizes: sizesArray
       }]);
 
       if (dbError) throw dbError;
@@ -79,7 +81,7 @@ export default function AdminPage() {
       alert("✨ Product successfully added!");
       setName('');
       setPrice('');
-      setSizesInput(''); // Clear sizes
+      setSizesInput(''); 
       setFiles([]);
       fetchProducts(); 
 
@@ -98,8 +100,8 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#fafafa] font-sans pb-20">
-      <div className="bg-black text-white py-8 px-4 text-center relative">
+    <div className="min-h-screen bg-[#111] font-sans pb-20"> {/* Upgraded to match your dark theme slightly */}
+      <div className="bg-black text-white py-8 px-4 text-center relative border-b border-gray-800">
         <h1 className="text-2xl font-black uppercase tracking-widest mb-1">MOVANA HQ</h1>
         <p className="text-gray-400 tracking-widest uppercase text-[10px]">Admin Command Center</p>
         <button onClick={() => router.push('/')} className="absolute top-8 right-6 text-xs font-bold flex items-center gap-1 hover:text-gray-300">
@@ -109,25 +111,25 @@ export default function AdminPage() {
 
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 mt-8 grid grid-cols-1 md:grid-cols-3 gap-8">
         <div className="md:col-span-1">
-          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200 sticky top-24">
-            <h2 className="text-sm font-bold uppercase tracking-widest mb-6 flex items-center gap-2 border-b pb-4">
+          <div className="bg-[#1a1a1a] p-6 rounded-3xl shadow-lg border border-gray-800 sticky top-24 text-white">
+            <h2 className="text-sm font-bold uppercase tracking-widest mb-6 flex items-center gap-2 border-b border-gray-800 pb-4">
               <Plus className="w-4 h-4" /> Add New Product
             </h2>
             
             <form onSubmit={handleAddProduct} className="space-y-4">
               <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Product Name</label>
-                <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 outline-none text-sm" placeholder="e.g. Summer Nighty" />
+                <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-3 bg-black rounded-xl border border-gray-800 outline-none text-sm text-white focus:border-gray-500 transition" placeholder="e.g. Summer Nighty" />
               </div>
 
               <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Price (₹)</label>
-                <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 outline-none text-sm" placeholder="999" />
+                <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full px-4 py-3 bg-black rounded-xl border border-gray-800 outline-none text-sm text-white focus:border-gray-500 transition" placeholder="999" />
               </div>
 
               <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Category</label>
-                <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 outline-none text-sm uppercase">
+                <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full px-4 py-3 bg-black rounded-xl border border-gray-800 outline-none text-sm uppercase text-white focus:border-gray-500 transition">
                   <option value="NIGHTIES">Nighties</option>
                   <option value="INNERWEAR">Innerwear</option>
                   <option value="LOUNGEWEAR">Loungewear</option>
@@ -135,59 +137,22 @@ export default function AdminPage() {
                 </select>
               </div>
 
-              {/* 📏 SIZES INPUT */}
               <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Custom Sizes (Optional)</label>
-                <input type="text" value={sizesInput} onChange={(e) => setSizesInput(e.target.value)} className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 outline-none text-sm" placeholder="e.g. XL, XXL (Leave blank if none)" />
+                <input type="text" value={sizesInput} onChange={(e) => setSizesInput(e.target.value)} className="w-full px-4 py-3 bg-black rounded-xl border border-gray-800 outline-none text-sm text-white focus:border-gray-500 transition" placeholder="e.g. XL, XXL (Leave blank if none)" />
               </div>
 
               <div>
                 <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider mb-2 block">Upload Images</label>
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-xl cursor-pointer bg-gray-50 hover:bg-gray-100 transition">
+                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-700 rounded-xl cursor-pointer bg-black hover:bg-gray-900 transition">
                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
-                    <ImageIcon className="w-8 h-8 text-gray-400 mb-2" />
+                    <ImageIcon className="w-8 h-8 text-gray-600 mb-2" />
                     <p className="text-xs text-gray-500 font-bold uppercase tracking-widest">{files.length > 0 ? `${files.length} Files Selected` : 'Click to Upload'}</p>
                   </div>
                   <input type="file" multiple accept="image/*" onChange={handleFileChange} className="hidden" />
                 </label>
               </div>
 
-              <button type="submit" disabled={loading} className="w-full bg-black text-white py-4 rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-gray-800 transition shadow-lg flex justify-center items-center gap-2 mt-4">
+              <button type="submit" disabled={loading} className="w-full bg-white text-black py-4 rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-gray-200 transition shadow-lg flex justify-center items-center gap-2 mt-4">
                 {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading...</> : <><Package className="w-4 h-4" /> Publish Product</>}
               </button>
-            </form>
-          </div>
-        </div>
-
-        <div className="md:col-span-2">
-          <div className="bg-white p-6 rounded-3xl shadow-sm border border-gray-200">
-            <h2 className="text-sm font-bold uppercase tracking-widest mb-6 border-b pb-4">Current Inventory</h2>
-            {isFetching ? (
-              <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-gray-400" /></div>
-            ) : products.length === 0 ? (
-              <p className="text-center text-sm text-gray-500 py-10">No products found.</p>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {products.map((product) => (
-                  <div key={product.id} className="flex gap-4 p-3 bg-gray-50 border border-gray-100 rounded-2xl items-center">
-                    <div className="w-16 h-20 bg-gray-200 rounded-lg overflow-hidden shrink-0">
-                      {product.image_url && <img src={product.image_url} className="w-full h-full object-cover" alt="img" />}
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-xs font-bold text-black uppercase tracking-tight line-clamp-1">{product.name}</p>
-                      <p className="text-[10px] text-gray-500 uppercase tracking-widest">{product.category}</p>
-                      <p className="text-sm font-black text-green-600 mt-1">₹{product.price}</p>
-                      {/* Show sizes in admin view */}
-                      {product.sizes && <p className="text-[9px] text-purple-600 font-bold mt-1">Sizes: {product.sizes.join(', ')}</p>}
-                    </div>
-                    <button onClick={() => handleDelete(product.id)} className="p-2 text-gray-400 hover:text-red-600 transition bg-white rounded-full shadow-sm"><Trash2 className="w-4 h-4" /></button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
