@@ -17,12 +17,12 @@ export default function AdminPage() {
   
   const router = useRouter();
 
-  // 🔒 SECURE ADMIN LOGIN CHECK (Updated with your email!)
+  // 🔒 SECURE ADMIN LOGIN CHECK
   useEffect(() => {
     const checkAdmin = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       
-      // The bouncer now checks for your exact email!
+      // Checking for your exact email!
       if (!session || session.user.email !== 'naveenkumark1206@gmail.com') {
         alert("Access Denied. Admins only.");
         router.push('/');
@@ -64,7 +64,6 @@ export default function AdminPage() {
         uploadedUrls.push(publicUrlData.publicUrl);
       }
 
-      // 📏 SMART SIZE FORMATTER
       const sizesArray = sizesInput.trim() ? sizesInput.split(',').map(s => s.trim().toUpperCase()) : null;
 
       const { error: dbError } = await supabase.from('products').insert([{
@@ -100,7 +99,7 @@ export default function AdminPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#111] font-sans pb-20"> {/* Upgraded to match your dark theme slightly */}
+    <div className="min-h-screen bg-[#111] font-sans pb-20">
       <div className="bg-black text-white py-8 px-4 text-center relative border-b border-gray-800">
         <h1 className="text-2xl font-black uppercase tracking-widest mb-1">MOVANA HQ</h1>
         <p className="text-gray-400 tracking-widest uppercase text-[10px]">Admin Command Center</p>
@@ -156,3 +155,38 @@ export default function AdminPage() {
               <button type="submit" disabled={loading} className="w-full bg-white text-black py-4 rounded-xl font-bold uppercase tracking-widest text-xs hover:bg-gray-200 transition shadow-lg flex justify-center items-center gap-2 mt-4">
                 {loading ? <><Loader2 className="w-4 h-4 animate-spin" /> Uploading...</> : <><Package className="w-4 h-4" /> Publish Product</>}
               </button>
+            </form>
+          </div>
+        </div>
+
+        <div className="md:col-span-2">
+          <div className="bg-[#1a1a1a] p-6 rounded-3xl shadow-lg border border-gray-800 text-white">
+            <h2 className="text-sm font-bold uppercase tracking-widest mb-6 border-b border-gray-800 pb-4">Current Inventory</h2>
+            {isFetching ? (
+              <div className="flex justify-center py-10"><Loader2 className="w-8 h-8 animate-spin text-gray-600" /></div>
+            ) : products.length === 0 ? (
+              <p className="text-center text-sm text-gray-500 py-10">No products found.</p>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {products.map((product) => (
+                  <div key={product.id} className="flex gap-4 p-3 bg-black border border-gray-800 rounded-2xl items-center">
+                    <div className="w-16 h-20 bg-gray-900 rounded-lg overflow-hidden shrink-0">
+                      {product.image_url && <img src={product.image_url} className="w-full h-full object-cover" alt="img" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-xs font-bold text-white uppercase tracking-tight line-clamp-1">{product.name}</p>
+                      <p className="text-[10px] text-gray-500 uppercase tracking-widest">{product.category}</p>
+                      <p className="text-sm font-black text-green-500 mt-1">₹{product.price}</p>
+                      {product.sizes && <p className="text-[9px] text-purple-400 font-bold mt-1">Sizes: {product.sizes.join(', ')}</p>}
+                    </div>
+                    <button onClick={() => handleDelete(product.id)} className="p-2 text-gray-600 hover:text-red-500 transition bg-black rounded-full hover:bg-gray-900"><Trash2 className="w-4 h-4" /></button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
