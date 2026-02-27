@@ -16,7 +16,7 @@ export default function menswearPage() {
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .ilike('category', '%men%'); // Looks for "Womenswear" or "Women"
+        .ilike('category', '%mens%'); // Looks for "Womenswear" or "Women"
       
       if (!error && data) {
         setProducts(data);
