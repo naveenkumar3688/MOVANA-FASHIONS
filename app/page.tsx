@@ -22,7 +22,7 @@ export default function HomePage() {
    {
       name: "Titanic",
       desc: "The Classic Comfort Cut",
-      video: null, // 👈 Change this to null temporarily!
+      video: "/titanic.mp4",
       image: "/titanic.jpg" // 👈 Assuming you put a picture here!
     },
     {
