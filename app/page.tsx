@@ -17,31 +17,35 @@ export default function HomePage() {
     "https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1600&auto=format&fit=crop"  
   ];
 
-  // 👗 THE 4 MOVANA MODELS DATA
+  // 👗 MOVANA MODELS - NOW WITH AUTO-PLAYING VIDEOS!
   const movanaModels = [
     {
       name: "Titanic",
       desc: "The Classic Comfort Cut",
-      // Replace this with your actual Titanic image URL!
-      image: "https://images.unsplash.com/photo-1515347619152-14120dfbd082?q=80&w=800&auto=format&fit=crop" 
+      // 🎥 The Red Floral Model Video
+      video: "http://googleusercontent.com/generated_video_content/7675566835068970734",
+      image: "/titanic.jpg" 
     },
     {
       name: "Zip",
       desc: "Smart & Practical",
-      // Replace this with your actual Zip image URL!
-      image: "https://images.unsplash.com/photo-1525507119028-ed4c629a60a3?q=80&w=800&auto=format&fit=crop" 
+      // 🎥 The Blue Model Video
+      video: "http://googleusercontent.com/generated_video_content/15478717402285050267",
+      image: "/zip.jpg" 
     },
     {
       name: "Frock",
       desc: "Flared Premium Comfort",
-      // Replace this with your actual Frock image URL!
-      image: "https://images.unsplash.com/photo-1572804013309-59a88b7e92f1?q=80&w=800&auto=format&fit=crop" 
+      // 🎥 The Green Model Video
+      video: "http://googleusercontent.com/generated_video_content/6083131007319144240",
+      image: "/frock.jpg" 
     },
     {
       name: "Elastic",
       desc: "Smocked Perfect Fit",
-      // This is the premium elastic placeholder I found for you!
-      image: "" 
+      // No video for Elastic yet, so it perfectly falls back to your image!
+      video: null,
+      image: "/elastic.jpg" 
     }
   ];
 
@@ -87,7 +91,7 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* ✨ NEW: SHOP BY MODEL SECTION ✨ */}
+      {/* ✨ SHOP BY MODEL: NOW WITH MOVING VIDEOS ✨ */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 mt-4">
         <div className="text-center mb-12">
           <h2 className="text-2xl md:text-3xl font-black uppercase tracking-widest mb-3 text-black">Shop By Model</h2>
@@ -98,11 +102,25 @@ export default function HomePage() {
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
           {movanaModels.map((model, index) => (
             <Link href="#catalogue" key={index} className="group relative rounded-3xl overflow-hidden aspect-[4/5] shadow-sm cursor-pointer block bg-black">
-              <img 
-                src={model.image} 
-                alt={model.name} 
-                className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700"
-              />
+              
+              {/* 🧠 Smart Logic: Show Video if it exists, otherwise show the static Image! */}
+              {model.video ? (
+                <video 
+                  src={model.video} 
+                  autoPlay 
+                  loop 
+                  muted 
+                  playsInline
+                  className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700"
+                />
+              ) : (
+                <img 
+                  src={model.image} 
+                  alt={model.name} 
+                  className="w-full h-full object-cover opacity-80 group-hover:opacity-100 group-hover:scale-110 transition-all duration-700"
+                />
+              )}
+              
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
               <div className="absolute bottom-0 left-0 right-0 p-6 text-center transform translate-y-2 group-hover:translate-y-0 transition-transform duration-500">
                 <h3 className="text-white text-xl md:text-2xl font-black uppercase tracking-widest mb-1">{model.name}</h3>
