@@ -1,125 +1,176 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation'; 
-import { supabase } from '../../../lib/supabase';
-import { Loader2, ShieldCheck, Truck, Zap, ShoppingCart } from 'lucide-react';
-import { useCart } from '../../../context/CartContext'; 
+import { useState, useEffect } from 'react';
+import { useParams, useRouter } from 'next/navigation';
+import { supabase } from '../../../lib/supabase'; // Adjust this path if needed!
+import { useCart } from '../../../context/CartContext';
+import { ShoppingBag, Zap, Truck, ShieldCheck, Loader2 } from 'lucide-react';
 
 export default function ProductPage() {
   const params = useParams();
-  const router = useRouter(); 
+  const router = useRouter();
+  const { addItem } = useCart() || { addItem: () => {} };
+
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedSize, setSelectedSize] = useState('L');
+  const [selectedSize, setSelectedSize] = useState('M'); // Keeps your size circles working!
   
-  // Connect to the master cart
-  const { addToCart } = useCart() || {}; 
-
-  const sizes = ['M', 'L', 'XL', 'XXL'];
+  // 📸 THE MAGIC IMAGE STATE
+  const [mainImage, setMainImage] = useState<string>('');
 
   useEffect(() => {
     async function fetchProduct() {
-      if (!params?.id) return;
-      const { data } = await supabase.from('products').select('*').eq('id', params.id).single();
-      setProduct(data);
+      if (!params.id) return;
+      
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .eq('id', params.id)
+        .single();
+
+      if (error) {
+        console.error("Error fetching product:", error);
+        router.push('/');
+      } else if (data) {
+        setProduct(data);
+        
+        // 🧠 Smart Check: Use gallery first, fallback to single image
+        if (data.gallery_images && data.gallery_images.length > 0) {
+          setMainImage(data.gallery_images[0]);
+        } else {
+          setMainImage(data.image_url || '');
+        }
+      }
       setLoading(false);
     }
+
     fetchProduct();
-  }, [params?.id]);
+  }, [params.id, router]);
 
-  if (loading) return <div className="min-h-screen flex items-center justify-center"><Loader2 className="animate-spin text-black w-12 h-12" /></div>;
-  if (!product) return <div className="min-h-screen flex items-center justify-center text-2xl font-bold">Product not found 😢</div>;
-
-  const productWithSize = {
-    ...product,
-    id: `${product.id}-${selectedSize}`, 
-    name: `${product.name} (Size: ${selectedSize})`
+  const handleAddToCart = () => {
+    addItem({
+      id: product.id,
+      name: `${product.name} (Size: ${selectedSize})`, // Adds size to cart!
+      price: product.price,
+      image_url: mainImage,
+      category: product.category,
+      quantity: 1
+    });
+    alert('✨ Added to Cart!');
   };
 
-  // 🔒 STRICT LOGIN CHECK FUNCTION
-  const requireLogin = async (action: () => void) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) {
-      alert("Please log in to your account to place an order!");
-      router.push('/login'); 
-      return; 
-    }
-    action(); // If logged in, run the cart action!
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center">
+        <Loader2 className="w-10 h-10 animate-spin text-white mb-4" />
+      </div>
+    );
+  }
 
-  // ⚡ BUY NOW (Adds to cart & jumps to checkout)
-  const handleBuyNow = () => requireLogin(() => {
-    if (addToCart) addToCart(productWithSize);
-    router.push('/cart'); 
-  });
+  if (!product) return null;
 
-  // 🛒 ADD TO CART (Just adds to cart)
-  const handleAddToCart = () => requireLogin(() => {
-    if (addToCart) addToCart(productWithSize);
-  });
+  // 📸 Gather all images to create the thumbnail row
+  const allImages = product.gallery_images && product.gallery_images.length > 0 
+    ? product.gallery_images 
+    : [product.image_url].filter(Boolean);
 
   return (
-    <div className="min-h-screen bg-[#fafafa] text-black py-12 px-4 md:px-12">
-      <div className="max-w-6xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-12">
+    <div className="min-h-screen bg-black text-white font-sans pb-20 pt-10">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        <div className="bg-gray-100 rounded-2xl overflow-hidden aspect-[3/4] shadow-sm">
-          {product.image_url ? (
-            <img src={product.image_url} alt={product.name} className="w-full h-full object-cover" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-gray-400">No Image</div>
-          )}
-        </div>
-
-        <div className="flex flex-col justify-center">
-          <span className="text-gray-500 tracking-widest text-sm uppercase mb-2">{product.category}</span>
-          <h1 className="text-4xl md:text-5xl font-black tracking-tight mb-4 uppercase">{product.name}</h1>
-          <p className="text-3xl font-semibold mb-6">₹{product.price}</p>
+        <div className="flex flex-col md:flex-row gap-12 items-start">
           
-          <div className="mb-10">
-            <h3 className="font-bold mb-4 uppercase tracking-wider text-sm">Select Size</h3>
-            <div className="flex gap-4">
-              {sizes.map(size => (
-                <button 
-                  key={size}
-                  onClick={() => setSelectedSize(size)}
-                  className={`w-14 h-14 rounded-full font-bold border-2 transition-all flex items-center justify-center ${
-                    selectedSize === size ? 'border-black bg-black text-white scale-110 shadow-md' : 'border-gray-300'
-                  }`}
-                >
-                  {size}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex flex-col gap-4 w-full md:w-3/4 mb-10">
-            {/* ⚡ BUY IT NOW BUTTON (Matches your screenshot design) */}
-            <button 
-              onClick={handleBuyNow}
-              className="w-full bg-black text-white py-4 rounded-xl font-bold uppercase tracking-widest text-sm hover:bg-gray-800 transition shadow-lg flex items-center justify-center gap-2"
-            >
-              <Zap className="w-5 h-5 fill-current" /> Buy It Now
-            </button>
+          {/* 📸 LEFT SIDE: THE SWIPEABLE GALLERY */}
+          <div className="w-full md:w-1/2 flex flex-col gap-4">
             
-            {/* 🛒 ADD TO CART BUTTON */}
-            <button 
-              onClick={handleAddToCart}
-              className="w-full bg-white text-black border-2 border-black py-4 rounded-xl font-bold uppercase tracking-widest text-sm hover:bg-gray-50 transition shadow-sm flex items-center justify-center gap-2"
-            >
-              <ShoppingCart className="w-5 h-5" /> Add to Cart
-            </button>
+            {/* Big Main Image */}
+            <div className="w-full aspect-[3/4] bg-white rounded-2xl overflow-hidden shadow-2xl">
+              {mainImage ? (
+                <img src={mainImage} alt={product.name} className="w-full h-full object-contain" />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-gray-500 font-bold uppercase">No Image</div>
+              )}
+            </div>
+
+            {/* Clickable Thumbnails Row */}
+            {allImages.length > 1 && (
+              <div className="flex gap-4 overflow-x-auto pb-4 pt-2 scrollbar-hide">
+                {allImages.map((img: string, index: number) => (
+                  <button 
+                    key={index} 
+                    onClick={() => setMainImage(img)}
+                    className={`w-20 h-24 shrink-0 rounded-xl overflow-hidden border-2 transition-all duration-200 ${
+                      mainImage === img 
+                      ? 'border-white opacity-100 scale-105 shadow-[0_0_15px_rgba(255,255,255,0.3)]' 
+                      : 'border-transparent opacity-50 hover:opacity-100'
+                    }`}
+                  >
+                    <img src={img} alt={`Thumbnail ${index + 1}`} className="w-full h-full object-cover" />
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
-          <div className="border-t border-gray-200 pt-6 space-y-4 text-gray-600">
-            <div className="flex items-center gap-3">
-              <Truck className="w-6 h-6 text-green-600" />
-              <span className="font-medium text-sm tracking-wide">Fast Delivery Across India</span>
+          {/* 🛍️ RIGHT SIDE: PRODUCT DETAILS (Your Dark Theme) */}
+          <div className="w-full md:w-1/2 flex flex-col justify-center">
+            
+            <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">
+              {product.category}
+            </p>
+            
+            <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tight mb-4 leading-none">
+              {product.name}
+            </h1>
+            
+            <p className="text-3xl font-bold mb-8">
+              ₹{product.price}
+            </p>
+
+            {/* SIZE SELECTOR */}
+            <div className="mb-8">
+              <p className="text-xs font-bold uppercase tracking-widest mb-4">Select Size</p>
+              <div className="flex gap-4">
+                {['M', 'L', 'XL', 'XXL'].map((size) => (
+                  <button 
+                    key={size}
+                    onClick={() => setSelectedSize(size)}
+                    className={`w-12 h-12 rounded-full border-2 flex items-center justify-center font-bold transition-all ${
+                      selectedSize === size 
+                      ? 'border-white bg-white text-black' 
+                      : 'border-gray-600 text-white hover:border-white'
+                    }`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <ShieldCheck className="w-6 h-6 text-blue-600" />
-              <span className="font-medium text-sm tracking-wide">100% Secure Razorpay Checkout</span>
+
+            {/* ACTION BUTTONS */}
+            <div className="flex flex-col gap-4 mb-10">
+              <button className="w-full bg-white text-black py-4 rounded-full font-bold uppercase tracking-widest text-sm hover:bg-gray-200 transition flex justify-center items-center gap-2">
+                <Zap className="w-4 h-4" /> Buy It Now
+              </button>
+              
+              <button 
+                onClick={handleAddToCart}
+                className="w-full border-2 border-white text-white py-4 rounded-full font-bold uppercase tracking-widest text-sm hover:bg-white/10 transition flex justify-center items-center gap-2"
+              >
+                <ShoppingBag className="w-4 h-4" /> Add to Cart
+              </button>
             </div>
+
+            {/* TRUST BADGES */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3 text-sm font-medium text-gray-300">
+                <Truck className="w-5 h-5 text-green-500" /> Fast Delivery Across India
+              </div>
+              <div className="flex items-center gap-3 text-sm font-medium text-gray-300">
+                <ShieldCheck className="w-5 h-5 text-blue-500" /> 100% Secure Razorpay Checkout
+              </div>
+            </div>
+
           </div>
         </div>
       </div>
