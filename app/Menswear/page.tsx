@@ -6,32 +6,32 @@ import AddToCartButton from '../../components/AddtoCartButton';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 
-export default function MenswearPage() {
+export default function menswearPage() {
   const [products, setProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function fetchMenswear() {
-      // 🚨 Exact match for Menswear!
+    async function fetchmenswear() {
+      // 🚨 Notice the .eq() here! It ONLY fetches Womenswear!
       const { data, error } = await supabase
         .from('products')
         .select('*')
-        .eq('category', 'Menswear'); 
+        .ilike('category', '%men%'); // Looks for "Womenswear" or "Women"
       
       if (!error && data) {
         setProducts(data);
       }
       setLoading(false);
     }
-    fetchMenswear();
+    fetchmenswear();
   }, []);
 
   return (
     <div className="min-h-screen bg-[#fafafa] font-sans pb-20">
       {/* HEADER */}
       <div className="bg-black text-white py-16 px-4 text-center">
-        <h1 className="text-4xl sm:text-5xl font-extrabold uppercase tracking-widest mb-4">Menswear</h1>
-        <p className="text-gray-400 tracking-wide uppercase text-sm">Premium Essentials & Innerwear</p>
+        <h1 className="text-4xl sm:text-5xl font-extrabold uppercase tracking-widest mb-4">menswear</h1>
+        <p className="text-gray-400 tracking-wide uppercase text-sm">Premium Nighties & Innerwear</p>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-12">
@@ -42,7 +42,7 @@ export default function MenswearPage() {
         {loading ? (
           <div className="text-center py-20 text-gray-500 font-bold uppercase tracking-widest">Loading Collection...</div>
         ) : products.length === 0 ? (
-          <div className="text-center py-20 text-gray-500 text-lg">No products found in Menswear yet.</div>
+          <div className="text-center py-20 text-gray-500 text-lg">No products found in menswear yet.</div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
             {products.map((product) => (
