@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { supabase } from '../../../lib/supabase'; // Adjust this path if needed!
+import { supabase } from '../../../lib/supabase';
 import { useCart } from '../../../context/CartContext';
 import { ShoppingBag, Zap, Truck, ShieldCheck, Loader2 } from 'lucide-react';
 
@@ -13,10 +13,10 @@ export default function ProductPage() {
 
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [selectedSize, setSelectedSize] = useState('M'); // Keeps your size circles working!
+  const [selectedSize, setSelectedSize] = useState('M');
   
-  // 📸 THE MAGIC IMAGE STATE
   const [mainImage, setMainImage] = useState<string>('');
+  const [allImages, setAllImages] = useState<string[]>([]);
 
   useEffect(() => {
     async function fetchProduct() {
@@ -34,12 +34,12 @@ export default function ProductPage() {
       } else if (data) {
         setProduct(data);
         
-        // 🧠 Smart Check: Use gallery first, fallback to single image
-        if (data.gallery_images && data.gallery_images.length > 0) {
-          setMainImage(data.gallery_images[0]);
-        } else {
-          setMainImage(data.image_url || '');
-        }
+        const images = data.gallery_images && data.gallery_images.length > 0 
+          ? data.gallery_images 
+          : [data.image_url].filter(Boolean);
+          
+        setAllImages(images);
+        if (images.length > 0) setMainImage(images[0]);
       }
       setLoading(false);
     }
@@ -47,10 +47,25 @@ export default function ProductPage() {
     fetchProduct();
   }, [params.id, router]);
 
+  // ⏱️ THE AUTO-SLIDE MAGIC
+  useEffect(() => {
+    if (allImages.length <= 1) return; // Don't slide if there's only 1 image
+
+    const interval = setInterval(() => {
+      setMainImage((prevImage) => {
+        const currentIndex = allImages.indexOf(prevImage);
+        const nextIndex = (currentIndex + 1) % allImages.length;
+        return allImages[nextIndex];
+      });
+    }, 3000); // Changes image every 3 seconds
+
+    return () => clearInterval(interval); // Cleans up the timer if they leave the page
+  }, [allImages, mainImage]);
+
   const handleAddToCart = () => {
     addItem({
       id: product.id,
-      name: `${product.name} (Size: ${selectedSize})`, // Adds size to cart!
+      name: `${product.name} (Size: ${selectedSize})`,
       price: product.price,
       image_url: mainImage,
       category: product.category,
@@ -69,11 +84,6 @@ export default function ProductPage() {
 
   if (!product) return null;
 
-  // 📸 Gather all images to create the thumbnail row
-  const allImages = product.gallery_images && product.gallery_images.length > 0 
-    ? product.gallery_images 
-    : [product.image_url].filter(Boolean);
-
   return (
     <div className="min-h-screen bg-black text-white font-sans pb-20 pt-10">
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -83,12 +93,18 @@ export default function ProductPage() {
           {/* 📸 LEFT SIDE: THE SWIPEABLE GALLERY */}
           <div className="w-full md:w-1/2 flex flex-col gap-4">
             
-            {/* Big Main Image */}
-            <div className="w-full aspect-[3/4] bg-white rounded-2xl overflow-hidden shadow-2xl">
-              {mainImage ? (
-                <img src={mainImage} alt={product.name} className="w-full h-full object-contain" />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center text-gray-500 font-bold uppercase">No Image</div>
+            {/* Big Main Image with Fade Transition */}
+            <div className="w-full aspect-[3/4] bg-white rounded-2xl overflow-hidden shadow-2xl relative">
+              {allImages.map((img) => (
+                <img 
+                  key={img}
+                  src={img} 
+                  alt={product.name} 
+                  className={`absolute inset-0 w-full h-full object-contain transition-opacity duration-700 ease-in-out ${mainImage === img ? 'opacity-100 z-10' : 'opacity-0 z-0'}`} 
+                />
+              ))}
+              {!mainImage && (
+                <div className="w-full h-full flex items-center justify-center text-gray-500 font-bold uppercase relative z-10">No Image</div>
               )}
             </div>
 
@@ -99,7 +115,7 @@ export default function ProductPage() {
                   <button 
                     key={index} 
                     onClick={() => setMainImage(img)}
-                    className={`w-20 h-24 shrink-0 rounded-xl overflow-hidden border-2 transition-all duration-200 ${
+                    className={`w-20 h-24 shrink-0 rounded-xl overflow-hidden border-2 transition-all duration-200 z-20 ${
                       mainImage === img 
                       ? 'border-white opacity-100 scale-105 shadow-[0_0_15px_rgba(255,255,255,0.3)]' 
                       : 'border-transparent opacity-50 hover:opacity-100'
@@ -112,7 +128,7 @@ export default function ProductPage() {
             )}
           </div>
 
-          {/* 🛍️ RIGHT SIDE: PRODUCT DETAILS (Your Dark Theme) */}
+          {/* 🛍️ RIGHT SIDE: PRODUCT DETAILS */}
           <div className="w-full md:w-1/2 flex flex-col justify-center">
             
             <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">

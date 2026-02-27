@@ -8,23 +8,35 @@ import { Loader2 } from 'lucide-react';
 export default function HomePage() {
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  
+  // 🎠 BANNER CAROUSEL STATE
+  const [currentSlide, setCurrentSlide] = useState(0);
+  
+  // Add as many banner images as you want here!
+  const banners = [
+    "/offer-woman.png", // Your main banner
+    "https://images.unsplash.com/photo-1583391733958-d6e06b72a690?q=80&w=1600&auto=format&fit=crop", // Example slide 2
+    "https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1600&auto=format&fit=crop"  // Example slide 3
+  ];
 
-  // Auto-Retry logic so the database never "sleeps" on your customers!
+  // Auto-Slide Logic for Banners (Slides every 4 seconds)
+  useEffect(() => {
+    const slideTimer = setInterval(() => {
+      setCurrentSlide((prev) => (prev + 1) % banners.length);
+    }, 4000);
+    return () => clearInterval(slideTimer);
+  }, [banners.length]);
+
+  // Fetch Products
   useEffect(() => {
     async function fetchProducts(retryCount = 0) {
       const { data, error } = await supabase.from('products').select('*');
       
       if ((error || !data || data.length === 0) && retryCount < 2) {
-        console.log("Database waking up, retrying...");
         setTimeout(() => fetchProducts(retryCount + 1), 1500); 
         return;
       }
-
-      if (error) {
-        console.error("Error fetching products:", error);
-      } else {
-        setAllProducts(data || []);
-      }
+      if (!error) setAllProducts(data || []);
       setLoading(false);
     }
     fetchProducts();
@@ -33,22 +45,36 @@ export default function HomePage() {
   return (
     <div className="min-h-screen bg-[#fafafa] font-sans pb-20">
       
-      {/* 🔥 THE NEW FULL-WIDTH MEESHO-STYLE BANNER */}
-      <section className="w-full bg-[#fafafa]">
-        <Link href="#catalogue" className="block w-full cursor-pointer hover:opacity-95 transition-opacity">
-          <img 
-            src="/offer-woman.png" 
-            alt="Mega Clearance Sale - Premium Nighties" 
-            className="w-full h-auto object-cover md:object-contain bg-rose-50/50"
-            onError={(e) => {
-              // This is just a temporary placeholder until your image loads
-              e.currentTarget.src = "https://images.unsplash.com/photo-1583391733958-d6e06b72a690?q=80&w=1600&auto=format&fit=crop"; 
-            }}
-          />
-        </Link>
+      {/* 🔥 THE NEW INTERACTIVE SLIDING CAROUSEL */}
+      <section className="w-full bg-[#fafafa] relative overflow-hidden group">
+        <div 
+          className="flex transition-transform duration-700 ease-in-out"
+          style={{ transform: `translateX(-${currentSlide * 100}%)` }}
+        >
+          {banners.map((img, index) => (
+            <Link key={index} href="#catalogue" className="w-full shrink-0 block cursor-pointer">
+              <img 
+                src={img} 
+                alt={`MOVANA Offer ${index + 1}`} 
+                className="w-full h-auto object-cover md:object-contain bg-rose-50/50"
+              />
+            </Link>
+          ))}
+        </div>
+
+        {/* 🟢 Navigation Dots */}
+        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20">
+          {banners.map((_, idx) => (
+            <button 
+              key={idx}
+              onClick={() => setCurrentSlide(idx)} 
+              className={`w-3 h-3 rounded-full transition-all duration-300 shadow-md ${idx === currentSlide ? 'bg-black scale-125 w-6' : 'bg-gray-400 hover:bg-gray-600'}`} 
+            />
+          ))}
+        </div>
       </section>
 
-      {/* 👗 CATALOGUE SECTION (Kept exactly as you had it!) */}
+      {/* 👗 CATALOGUE SECTION */}
       <section id="catalogue" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 mt-4">
         <div className="text-center mb-16">
           <h2 className="text-3xl font-black uppercase tracking-widest mb-4 text-black">Latest Arrivals</h2>
@@ -78,7 +104,6 @@ export default function HomePage() {
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-gray-400 text-xs font-bold uppercase tracking-widest">No Image</div>
                   )}
-                  {/* Premium Badge */}
                   <div className="absolute top-3 left-3 bg-white text-black text-[10px] font-bold uppercase tracking-widest px-3 py-1.5 rounded-full shadow-sm">
                     Offer Applied
                   </div>
