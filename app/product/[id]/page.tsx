@@ -12,7 +12,7 @@ export default function ProductPage() {
   const router = useRouter();
   
   const cartContext = useCart();
-  const addItem = cartContext?.addItem || (() => console.log("Cart Context Missing!"));
+  const addToCart = cartContext?.addToCart || (() => console.error("Cart Context is missing!"));
 
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -24,22 +24,16 @@ export default function ProductPage() {
   useEffect(() => {
     async function fetchProduct() {
       if (!params.id) return;
-      
       const { data, error } = await supabase.from('products').select('*').eq('id', params.id).single();
 
       if (error) {
-        console.error("Error fetching product:", error);
         router.push('/');
       } else if (data) {
         setProduct(data);
-        
         const images = data.gallery_images && data.gallery_images.length > 0 ? data.gallery_images : [data.image_url].filter(Boolean);
         setAllImages(images);
         if (images.length > 0) setMainImage(images[0]);
-        
-        if (data.sizes && data.sizes.length > 0) {
-          setSelectedSize(data.sizes[0]);
-        }
+        if (data.sizes && data.sizes.length > 0) setSelectedSize(data.sizes[0]);
       }
       setLoading(false);
     }
@@ -57,36 +51,31 @@ export default function ProductPage() {
     return () => clearInterval(interval);
   }, [allImages]);
 
-  // 🛒 SUPER SMART ADD TO CART (Now with an 'isBuyNow' flag!)
   const handleAddToCart = (isBuyNow = false) => {
     if (product.sizes && product.sizes.length > 0 && !selectedSize) {
       alert("Please select a size first!");
       return; 
     }
 
-    const cartName = product.sizes && product.sizes.length > 0 
-      ? `${product.name} (Size: ${selectedSize})` 
-      : product.name;
+    const cartName = product.sizes && product.sizes.length > 0 ? `${product.name} (Size: ${selectedSize})` : product.name;
+    const uniqueCartId = product.sizes && product.sizes.length > 0 ? `${product.id}-${selectedSize}` : product.id;
 
-    // 🚨 THE FIX: We use "...product" to send every single piece of data the cart expects!
-    addItem({
+    addToCart({
       ...product, 
+      id: uniqueCartId, 
       name: cartName,
       image_url: mainImage || product.image_url,
       quantity: 1
     });
     
-    // ⚡ If they clicked Buy Now, skip the alert and jump straight to the cart!
     if (isBuyNow) {
-      router.push('/cart');
+      router.push('/cart'); 
     } else {
-      alert('✨ Added to Cart!');
+      alert('✨ Added to Cart!'); 
     }
   };
 
-  if (loading) {
-    return <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-white mb-4" /></div>;
-  }
+  if (loading) return <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="w-10 h-10 animate-spin text-white mb-4" /></div>;
   if (!product) return null;
 
   return (
@@ -142,7 +131,6 @@ export default function ProductPage() {
             )}
 
             <div className="flex flex-col gap-4 mb-10 mt-2">
-              {/* Notice we pass 'true' for Buy Now, and 'false' for Add to Cart! */}
               <button onClick={() => handleAddToCart(true)} className="w-full bg-white text-black py-4 rounded-full font-bold uppercase tracking-widest text-sm hover:bg-gray-200 transition flex justify-center items-center gap-2">
                 <Zap className="w-4 h-4" /> Buy It Now
               </button>

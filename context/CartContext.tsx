@@ -5,12 +5,9 @@ import { createContext, useContext, useState, useEffect } from 'react';
 const CartContext = createContext<any>(null);
 
 export function CartProvider({ children }: { children: React.ReactNode }) {
-  // Initialize state immediately, possibly with data from localStorage if available server-side (less common, but safe)
-  // or just empty array to avoid hydration mismatch, then load in useEffect.
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // 1. Load the cart ONLY on the client side after mount
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const savedCart = localStorage.getItem('cart');
@@ -26,14 +23,12 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // 2. Anytime the cart changes, save it securely (only after initialization)
   useEffect(() => {
     if (isInitialized && typeof window !== 'undefined') {
       localStorage.setItem('cart', JSON.stringify(cartItems));
     }
   }, [cartItems, isInitialized]);
 
-  // 3. Universal Add function
   const addToCart = (product: any) => {
     setCartItems((prev) => {
       const existingItem = prev.find((item) => item.id === product.id);
@@ -44,16 +39,11 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
       return [...prev, { ...product, quantity: 1 }];
     });
-    // Simple alert for now. Can be replaced with toast later.
-    if (typeof window !== 'undefined') {
-       alert(`${product.name} added to your cart! 🛍️`);
-    }
   };
 
-  // 4. 🔥 NEW: Update Quantity function (+/- buttons)
-  const updateQuantity = (id: number, newQuantity: number) => {
+  const updateQuantity = (id: any, newQuantity: number) => {
     if (newQuantity < 1) {
-      removeItem(id); // If user goes below 1, remove the item
+      removeItem(id); 
       return;
     }
     setCartItems((prev) =>
@@ -63,8 +53,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
-  // 5. Universal Remove function
-  const removeItem = (id: number) => {
+  const removeItem = (id: any) => {
     setCartItems((prev) => prev.filter((item) => item.id !== id));
   };
 
