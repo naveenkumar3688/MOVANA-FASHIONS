@@ -10,7 +10,10 @@ import { ShoppingBag, Zap, Truck, ShieldCheck, Loader2, Home } from 'lucide-reac
 export default function ProductPage() {
   const params = useParams();
   const router = useRouter();
-  const { addItem } = useCart() || { addItem: () => {} };
+  
+  // 🛒 Added a safety fallback just in case the Cart Context isn't loading!
+  const cartContext = useCart();
+  const addItem = cartContext?.addItem || (() => console.log("Cart Context Missing!"));
 
   const [product, setProduct] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -55,41 +58,40 @@ export default function ProductPage() {
     return () => clearInterval(interval);
   }, [allImages]);
 
-  // 🛒 UPGRADED ADD TO CART LOGIC
+  // 🛡️ UNBREAKABLE ADD TO CART
   const handleAddToCart = () => {
-    // 1. Stop them if they need a size but haven't picked one
-    if (product.sizes && product.sizes.length > 0 && !selectedSize) {
-      alert("Please select a size first!");
-      return false; // Returns false so "Buy Now" knows it failed!
+    try {
+      if (product.sizes && product.sizes.length > 0 && !selectedSize) {
+        alert("Please select a size first!");
+        return false; 
+      }
+
+      const cartName = product.sizes && product.sizes.length > 0 
+        ? `${product.name} (Size: ${selectedSize})` 
+        : product.name;
+
+      // We reverted this back to the standard product.id (Number) so the Cart doesn't crash!
+      addItem({
+        id: product.id, 
+        name: cartName,
+        price: product.price,
+        image_url: mainImage || product.image_url,
+        category: product.category,
+        quantity: 1
+      });
+      
+      alert('✨ Added to Cart!');
+      return true; 
+      
+    } catch (error) {
+      console.error("Cart Error:", error);
+      alert("Oops! Something went wrong adding this to the cart.");
+      return false;
     }
-
-    // 2. Add the size to the name (e.g., "Grand Nighty (Size: XL)")
-    const cartName = product.sizes && product.sizes.length > 0 
-      ? `${product.name} (Size: ${selectedSize})` 
-      : product.name;
-
-    // 3. 🚨 THE SECRET FIX: Create a unique ID combining the product ID and the size!
-    // This stops XL and XXL from overwriting each other in the cart.
-    const uniqueCartId = product.sizes && product.sizes.length > 0 
-      ? `${product.id}-${selectedSize}` 
-      : product.id;
-
-    addItem({
-      id: uniqueCartId, // Using our new smart ID
-      name: cartName,
-      price: product.price,
-      image_url: mainImage,
-      category: product.category,
-      quantity: 1
-    });
-    
-    alert('✨ Added to Cart!');
-    return true; // Returns true so "Buy Now" knows it succeeded!
   };
 
-  // ⚡ UPGRADED BUY NOW LOGIC
+  // ⚡ UNBREAKABLE BUY NOW 
   const handleBuyNow = () => {
-    // Only go to the cart if the item actually successfully added!
     const success = handleAddToCart();
     if (success) {
       router.push('/cart');
