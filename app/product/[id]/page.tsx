@@ -11,7 +11,6 @@ export default function ProductPage() {
   const params = useParams();
   const router = useRouter();
   
-  // 🛒 Added a safety fallback just in case the Cart Context isn't loading!
   const cartContext = useCart();
   const addItem = cartContext?.addItem || (() => console.log("Cart Context Missing!"));
 
@@ -58,43 +57,30 @@ export default function ProductPage() {
     return () => clearInterval(interval);
   }, [allImages]);
 
-  // 🛡️ UNBREAKABLE ADD TO CART
-  const handleAddToCart = () => {
-    try {
-      if (product.sizes && product.sizes.length > 0 && !selectedSize) {
-        alert("Please select a size first!");
-        return false; 
-      }
-
-      const cartName = product.sizes && product.sizes.length > 0 
-        ? `${product.name} (Size: ${selectedSize})` 
-        : product.name;
-
-      // We reverted this back to the standard product.id (Number) so the Cart doesn't crash!
-      addItem({
-        id: product.id, 
-        name: cartName,
-        price: product.price,
-        image_url: mainImage || product.image_url,
-        category: product.category,
-        quantity: 1
-      });
-      
-      alert('✨ Added to Cart!');
-      return true; 
-      
-    } catch (error) {
-      console.error("Cart Error:", error);
-      alert("Oops! Something went wrong adding this to the cart.");
-      return false;
+  // 🛒 SUPER SMART ADD TO CART (Now with an 'isBuyNow' flag!)
+  const handleAddToCart = (isBuyNow = false) => {
+    if (product.sizes && product.sizes.length > 0 && !selectedSize) {
+      alert("Please select a size first!");
+      return; 
     }
-  };
 
-  // ⚡ UNBREAKABLE BUY NOW 
-  const handleBuyNow = () => {
-    const success = handleAddToCart();
-    if (success) {
+    const cartName = product.sizes && product.sizes.length > 0 
+      ? `${product.name} (Size: ${selectedSize})` 
+      : product.name;
+
+    // 🚨 THE FIX: We use "...product" to send every single piece of data the cart expects!
+    addItem({
+      ...product, 
+      name: cartName,
+      image_url: mainImage || product.image_url,
+      quantity: 1
+    });
+    
+    // ⚡ If they clicked Buy Now, skip the alert and jump straight to the cart!
+    if (isBuyNow) {
       router.push('/cart');
+    } else {
+      alert('✨ Added to Cart!');
     }
   };
 
@@ -156,11 +142,12 @@ export default function ProductPage() {
             )}
 
             <div className="flex flex-col gap-4 mb-10 mt-2">
-              <button onClick={handleBuyNow} className="w-full bg-white text-black py-4 rounded-full font-bold uppercase tracking-widest text-sm hover:bg-gray-200 transition flex justify-center items-center gap-2">
+              {/* Notice we pass 'true' for Buy Now, and 'false' for Add to Cart! */}
+              <button onClick={() => handleAddToCart(true)} className="w-full bg-white text-black py-4 rounded-full font-bold uppercase tracking-widest text-sm hover:bg-gray-200 transition flex justify-center items-center gap-2">
                 <Zap className="w-4 h-4" /> Buy It Now
               </button>
               
-              <button onClick={handleAddToCart} className="w-full border-2 border-white text-white py-4 rounded-full font-bold uppercase tracking-widest text-sm hover:bg-white/10 transition flex justify-center items-center gap-2">
+              <button onClick={() => handleAddToCart(false)} className="w-full border-2 border-white text-white py-4 rounded-full font-bold uppercase tracking-widest text-sm hover:bg-white/10 transition flex justify-center items-center gap-2">
                 <ShoppingBag className="w-4 h-4" /> Add to Cart
               </button>
             </div>
