@@ -13,7 +13,7 @@ export default function HomePage() {
   
   const banners = [
     "/offer-woman.png", 
-    "https://images.unsplash.com/photo-1583391733958-d6e06b72a690?q=80&w=1600&auto=format&fit=crop", 
+    "/SECOND-BANNER.jpg", 
     "https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1600&auto=format&fit=crop"  
   ];
 
