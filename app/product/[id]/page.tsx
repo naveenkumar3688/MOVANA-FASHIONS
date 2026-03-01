@@ -1,5 +1,8 @@
 'use client';
 
+// ✅ Import the Review Component
+import ProductReviews from '../../../components/ProductReviews';
+
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
@@ -86,8 +89,10 @@ export default function ProductPage() {
           <Home className="w-4 h-4" /> Back to Home
         </Link>
         
-        <div className="flex flex-col md:flex-row gap-12 items-start">
+        {/* PRODUCT DETAILS SECTION */}
+        <div className="flex flex-col md:flex-row gap-12 items-start mb-20">
           
+          {/* Left: Images */}
           <div className="w-full md:w-1/2 flex flex-col gap-4">
             <div className="w-full aspect-[3/4] bg-white rounded-2xl overflow-hidden shadow-2xl relative">
               {allImages.map((img) => (
@@ -106,6 +111,7 @@ export default function ProductPage() {
             )}
           </div>
 
+          {/* Right: Info */}
           <div className="w-full md:w-1/2 flex flex-col justify-center">
             <p className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-2">{product.category}</p>
             <h1 className="text-4xl md:text-6xl font-black uppercase tracking-tight mb-4 leading-none">{product.name}</h1>
@@ -147,6 +153,12 @@ export default function ProductPage() {
 
           </div>
         </div>
+
+        {/* 👇 NEW: REVIEWS SECTION ADDED HERE 👇 */}
+        <div className="bg-white text-black rounded-3xl p-8 md:p-12">
+            <ProductReviews productId={product.id} />
+        </div>
+
       </div>
     </div>
   );
