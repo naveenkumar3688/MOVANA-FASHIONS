@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'next/navigation';
-import { Loader2, Plus, Image as ImageIcon, Trash2, LogOut, Package } from 'lucide-react';
+import { Loader2, Plus, Image as ImageIcon, Trash2, LogOut, Package, Scale } from 'lucide-react';
 
 export default function AdminPage() {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('NIGHTIES');
+  // ⚖️ NEW: Weight State (Default 0.5kg)
+  const [weight, setWeight] = useState('0.5'); 
   const [sizesInput, setSizesInput] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
@@ -70,6 +72,7 @@ export default function AdminPage() {
         name,
         price: parseFloat(price),
         category,
+        weight: parseFloat(weight), // ⚖️ SAVING WEIGHT TO DB
         image_url: uploadedUrls[0],
         gallery_images: uploadedUrls,
         sizes: sizesArray
@@ -80,6 +83,7 @@ export default function AdminPage() {
       alert("✨ Product successfully added!");
       setName('');
       setPrice('');
+      setWeight('0.5'); // Reset weight
       setSizesInput(''); 
       setFiles([]);
       fetchProducts(); 
@@ -121,9 +125,23 @@ export default function AdminPage() {
                 <input type="text" value={name} onChange={(e) => setName(e.target.value)} className="w-full px-4 py-3 bg-black rounded-xl border border-gray-800 outline-none text-sm text-white focus:border-gray-500 transition" placeholder="e.g. Summer Nighty" />
               </div>
 
-              <div>
-                <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Price (₹)</label>
-                <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full px-4 py-3 bg-black rounded-xl border border-gray-800 outline-none text-sm text-white focus:border-gray-500 transition" placeholder="999" />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Price (₹)</label>
+                  <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full px-4 py-3 bg-black rounded-xl border border-gray-800 outline-none text-sm text-white focus:border-gray-500 transition" placeholder="999" />
+                </div>
+                {/* ⚖️ NEW WEIGHT INPUT */}
+                <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Weight (kg)</label>
+                  <input 
+                    type="number" 
+                    step="0.1" 
+                    value={weight} 
+                    onChange={(e) => setWeight(e.target.value)} 
+                    className="w-full px-4 py-3 bg-black rounded-xl border border-gray-800 outline-none text-sm text-white focus:border-gray-500 transition" 
+                    placeholder="0.5" 
+                  />
+                </div>
               </div>
 
               <div>
@@ -133,6 +151,7 @@ export default function AdminPage() {
                   <option value="INNERWEAR">Innerwear</option>
                   <option value="LOUNGEWEAR">Loungewear</option>
                   <option value="HOME ACCESSORIES">Home Accessories</option>
+                  <option value="MENSWEAR">Menswear</option> {/* Added Menswear Option too! */}
                 </select>
               </div>
 
@@ -176,7 +195,15 @@ export default function AdminPage() {
                     <div className="flex-1">
                       <p className="text-xs font-bold text-white uppercase tracking-tight line-clamp-1">{product.name}</p>
                       <p className="text-[10px] text-gray-500 uppercase tracking-widest">{product.category}</p>
-                      <p className="text-sm font-black text-green-500 mt-1">₹{product.price}</p>
+                      
+                      <div className="flex items-center gap-3 mt-1">
+                        <p className="text-sm font-black text-green-500">₹{product.price}</p>
+                        {/* ⚖️ SHOWING WEIGHT IN LIST */}
+                        <p className="text-[10px] text-gray-400 font-bold flex items-center gap-1">
+                           <Scale className="w-3 h-3"/> {product.weight || 0.5} kg
+                        </p>
+                      </div>
+
                       {product.sizes && <p className="text-[9px] text-purple-400 font-bold mt-1">Sizes: {product.sizes.join(', ')}</p>}
                     </div>
                     <button onClick={() => handleDelete(product.id)} className="p-2 text-gray-600 hover:text-red-500 transition bg-black rounded-full hover:bg-gray-900"><Trash2 className="w-4 h-4" /></button>
