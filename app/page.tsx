@@ -3,12 +3,11 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
-// 👈 NEW: Import useRouter for redirection
 import { useRouter } from 'next/navigation'; 
-import { Loader2, XCircle, Search } from 'lucide-react'; 
+import { Loader2, XCircle, Search, ShoppingBag } from 'lucide-react'; 
 
 export default function HomePage() {
-  const router = useRouter(); // 👈 Initialize the Router
+  const router = useRouter(); 
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
@@ -30,19 +29,20 @@ export default function HomePage() {
    { name: "Elastic", desc: "Smocked Perfect Fit", video: "/elastic.mp4", image: "/elastic.jpg" }
   ];
 
-  // 🧠 SMART SEARCH REDIRECT LOGIC
   const handleSmartSearch = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter') {
       const term = searchQuery.toLowerCase();
-      
-      // 🕵️‍♂️ Logic: If search contains specific keywords, redirect!
       if (term.includes('men') || term.includes('man') || term.includes('boy') || term.includes('male')) {
-        router.push('/menswear'); // 🚀 Teleport to Menswear Page
+        router.push('/menswear'); 
       } 
       else if (term.includes('women') || term.includes('girl') || term.includes('lady') || term.includes('female')) {
-        router.push('/womenswear'); // 🚀 Teleport to Womenswear Page
+        router.push('/womenswear'); 
       }
-      // If it's just "Red" or "Titanic", do nothing (the filter below handles it!)
+      else {
+        // If searching for a product, scroll down to catalogue automatically!
+        const catalogueSection = document.getElementById('catalogue');
+        if (catalogueSection) catalogueSection.scrollIntoView({ behavior: 'smooth' });
+      }
     }
   };
 
@@ -79,23 +79,54 @@ export default function HomePage() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-[#fafafa] font-sans pb-20">
+    <div className="min-h-screen bg-[#fafafa] font-sans pb-20 relative">
       
+      {/* 🚀 HEADER & SEARCH BAR (Overlaying the Hero) */}
+      <div className="absolute top-0 left-0 right-0 z-50 p-4">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+          
+          {/* LOGO */}
+          <h1 className="text-2xl font-black tracking-widest text-white drop-shadow-md hidden md:block">MOVANA</h1>
+
+          {/* 🔎 SEARCH BAR */}
+          <div className="w-full md:max-w-md relative">
+            <input
+              type="text"
+              placeholder="Search for 'Red Titanic' or 'Mens'..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={handleSmartSearch}
+              className="w-full pl-12 pr-4 py-3 rounded-full border-none bg-white/90 backdrop-blur-md text-black placeholder-gray-500 shadow-lg focus:outline-none focus:ring-2 focus:ring-black transition-all"
+            />
+            <Search className="w-5 h-5 text-gray-500 absolute left-4 top-3.5" />
+          </div>
+
+           {/* CART ICON (Optional) */}
+           <div className="hidden md:block">
+              <ShoppingBag className="w-6 h-6 text-white drop-shadow-md cursor-pointer hover:scale-110 transition"/>
+           </div>
+        </div>
+      </div>
+
       {/* 🎠 CAROUSEL HERO */}
-      <section className="w-full bg-[#fafafa] relative overflow-hidden group">
+      <section className="w-full bg-[#fafafa] relative overflow-hidden group h-[50vh] md:h-[80vh]">
         <div 
-          className="flex transition-transform duration-700 ease-in-out"
+          className="flex transition-transform duration-700 ease-in-out h-full"
           style={{ transform: `translateX(-${currentSlide * 100}%)` }}
         >
           {banners.map((img, index) => (
-            <Link key={index} href="#catalogue" className="w-full shrink-0 block cursor-pointer">
-              <img src={img} alt={`MOVANA Offer ${index + 1}`} className="w-full h-auto object-cover md:object-contain bg-rose-50/50" />
+            <Link key={index} href="#catalogue" className="w-full shrink-0 block cursor-pointer h-full relative">
+               {/* Dark Overlay so white text/search bar pops! */}
+               <div className="absolute inset-0 bg-black/20 z-10"></div>
+              <img src={img} alt={`MOVANA Offer ${index + 1}`} className="w-full h-full object-cover" />
             </Link>
           ))}
         </div>
-        <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-2 z-20">
+        
+        {/* Carousel Dots */}
+        <div className="absolute bottom-6 left-0 right-0 flex justify-center gap-2 z-20">
           {banners.map((_, idx) => (
-            <button key={idx} onClick={() => setCurrentSlide(idx)} className={`w-3 h-3 rounded-full transition-all duration-300 shadow-md ${idx === currentSlide ? 'bg-black scale-125 w-6' : 'bg-gray-400 hover:bg-gray-600'}`} />
+            <button key={idx} onClick={() => setCurrentSlide(idx)} className={`w-2 h-2 rounded-full transition-all duration-300 shadow-md ${idx === currentSlide ? 'bg-white scale-125 w-6' : 'bg-white/50 hover:bg-white'}`} />
           ))}
         </div>
       </section>
@@ -133,35 +164,25 @@ export default function HomePage() {
 
       {/* 👗 CATALOGUE SECTION */}
       <section id="catalogue" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="text-center mb-8">
+        <div className="text-center mb-16">
           <h2 className="text-3xl font-black uppercase tracking-widest mb-4 text-black">Latest Arrivals</h2>
           
-          {/* 🔎 SMART SEARCH BAR */}
-          <div className="max-w-md mx-auto relative mb-6">
-            <input
-              type="text"
-              placeholder="Type 'Mens' and hit Enter..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              // 🚨 LISTEN FOR ENTER KEY HERE
-              onKeyDown={handleSmartSearch}
-              className="w-full pl-12 pr-4 py-3 rounded-full border border-gray-200 bg-white text-black focus:outline-none focus:ring-2 focus:ring-black transition-shadow shadow-sm"
-            />
-            <Search className="w-5 h-5 text-gray-400 absolute left-4 top-3.5" />
-          </div>
-
-          {activeFilter !== 'All' && (
-            <div className="flex items-center justify-center gap-4 animate-fadeIn">
+          {/* 🔘 ACTIVE FILTER INDICATOR */}
+          {(activeFilter !== 'All' || searchQuery) && (
+            <div className="flex items-center justify-center gap-4 animate-fadeIn mt-4">
               <span className="text-sm font-bold uppercase tracking-widest text-gray-500">
-                Showing: <span className="text-black">{activeFilter} Models</span>
+                {searchQuery && `Searching: "${searchQuery}" `}
+                {activeFilter !== 'All' && `Filter: ${activeFilter}`}
               </span>
-              <button onClick={() => setActiveFilter('All')} className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full transition-all">
-                <XCircle className="w-4 h-4" /> Clear Filter
+              <button 
+                onClick={() => {setActiveFilter('All'); setSearchQuery('')}}
+                className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full transition-all"
+              >
+                <XCircle className="w-4 h-4" /> Clear
               </button>
             </div>
           )}
-
-          <div className="w-24 h-1 bg-black mx-auto mt-6"></div>
+          <div className="w-24 h-1 bg-black mx-auto mt-4"></div>
         </div>
 
         {loading ? (
@@ -172,10 +193,10 @@ export default function HomePage() {
         ) : filteredProducts.length === 0 ? (
           <div className="text-center py-20">
             <p className="text-gray-500 font-medium text-lg">
-               No products found for <strong>{searchQuery}</strong>.
+               No products found for <strong>{searchQuery} {activeFilter !== 'All' ? `in ${activeFilter}` : ''}</strong>.
             </p>
             <button onClick={() => { setActiveFilter('All'); setSearchQuery(''); }} className="text-black underline mt-4 text-sm font-bold uppercase tracking-widest">
-                 Clear All Filters
+                 Show All Products
             </button>
           </div>
         ) : (
