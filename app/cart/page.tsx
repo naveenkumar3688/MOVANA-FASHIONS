@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Trash2, CreditCard, ArrowRight, Loader2, MapPin, Minus, Plus } from 'lucide-react';
+import { Trash2, CreditCard, ArrowRight, Loader2, MapPin, Minus, Plus, Truck, Package } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useCart } from '../../context/CartContext';
 
@@ -22,19 +22,12 @@ export default function CartPage() {
     setIsMounted(true);
   }, []);
 
+  // 🛍️ MEGA OFFER LOGIC (4 Nighties for 999)
   const isNighty = (item: any) => {
     const nameMatch = item?.name?.toLowerCase().includes('night');
     const catMatch = item?.category?.toLowerCase().includes('night') || item?.category?.toLowerCase().includes('women');
     return nameMatch || catMatch;
   };
-
-  const totalItems = cartItems.reduce((sum: any, item: any) => sum + item.quantity, 0);
-  const subtotal = cartItems.reduce((sum: any, item: any) => sum + (item.price * item.quantity), 0);
-  const totalWeightKg = totalItems * 0.25; 
-  const isOver1Kg = totalWeightKg > 1;
-
-  const isTamilNadu = pincode.startsWith('6') && pincode.length === 6;
-  const isOtherState = pincode.length === 6 && !pincode.startsWith('6');
 
   const nightyItems = cartItems.filter(isNighty);
   let individualNightyPrices: number[] = [];
@@ -51,31 +44,80 @@ export default function CartPage() {
   const megaOfferActive = setsOfFour > 0;
 
   let finalNightyCost = (setsOfFour * 999);
-
   for (let i = setsOfFour * 4; i < individualNightyPrices.length; i++) {
     finalNightyCost += individualNightyPrices[i];
   }
 
   const rawNightyTotal = individualNightyPrices.reduce((sum, price) => sum + price, 0);
   const megaOfferDiscount = megaOfferActive ? (rawNightyTotal - finalNightyCost) : 0;
+  
+  // Basic Totals
+  const totalItems = cartItems.reduce((sum: any, item: any) => sum + item.quantity, 0);
+  const subtotal = cartItems.reduce((sum: any, item: any) => sum + (item.price * item.quantity), 0);
 
-  const stCourierPrice = isOver1Kg ? 100 : 50;
-  const indiaPostTnPrice = 60;
-  const delhiveryPrice = 130;
-  const indiaPostNatPrice = 100;
+  // ⚖️ NEW WEIGHT CALCULATION
+  // Defaults to 0.5kg per item if 'weight' is missing in DB
+  const totalWeight = cartItems.reduce((sum: number, item: any) => sum + ((item.weight || 0.5) * item.quantity), 0);
 
+  // 🚚 NEW COURIER LOGIC
+  const isTamilNadu = pincode.startsWith('6') && pincode.length === 6;
+  const isOtherState = pincode.length === 6 && !pincode.startsWith('6');
+
+  const getShippingOptions = () => {
+    if (!pincode || pincode.length !== 6) return [];
+
+    const options = [];
+
+    // --- INDIA POST PRICES (Same for everyone) ---
+    let indiaPostPrice = 0;
+    if (totalWeight < 1) indiaPostPrice = 60;
+    else if (totalWeight >= 1 && totalWeight < 2) indiaPostPrice = 100;
+    else indiaPostPrice = 200; // > 2kg
+
+    // Always add India Post
+    options.push({
+      id: 'India Post',
+      label: 'India Post',
+      price: indiaPostPrice,
+      desc: 'All India Service'
+    });
+
+    // --- ST COURIER PRICES (TN Only) ---
+    if (isTamilNadu) {
+      let stPrice = 0;
+      if (totalWeight < 1) stPrice = 50;
+      else if (totalWeight >= 1 && totalWeight < 2) stPrice = 100;
+      else stPrice = 200; // > 2kg
+
+      options.push({
+        id: 'ST Courier',
+        label: 'ST Courier',
+        price: stPrice,
+        desc: 'Fast TN Delivery'
+      });
+    }
+
+    return options;
+  };
+
+  const shippingOptions = getShippingOptions();
+  
+  // Determine Shipping Cost
   let shippingCost = 0;
-  if (selectedCourier === 'ST Courier') shippingCost = stCourierPrice;
-  else if (selectedCourier === 'India Post TN') shippingCost = indiaPostTnPrice;
-  else if (selectedCourier === 'India Post National') shippingCost = indiaPostNatPrice;
-  else if (selectedCourier === 'Delhivery') shippingCost = delhiveryPrice;
+  const selectedOption = shippingOptions.find(opt => opt.id === selectedCourier);
+  if (selectedOption) {
+    shippingCost = selectedOption.price;
+  }
 
+  // 🎁 Free Shipping if Mega Offer is Active?
+  // If you want to CHARGE shipping even on Mega Offer, comment out this if-block:
   if (megaOfferActive) {
     shippingCost = 0;
   }
 
   const finalTotal = Math.max(0, subtotal - megaOfferDiscount + shippingCost);
 
+  // 📍 LOCATION DETECTION
   const detectLocation = () => {
     setIsLocating(true);
     if ('geolocation' in navigator) {
@@ -106,6 +148,7 @@ export default function CartPage() {
     }
   };
 
+  // 💳 PAYMENT
   const initializeRazorpay = () => {
     return new Promise((resolve) => {
       const script = document.createElement('script');
@@ -117,7 +160,6 @@ export default function CartPage() {
   };
 
   const handlePayment = async () => {
-    // 🔒 COMPULSORY LOGIN CHECK BEFORE ANYTHING ELSE!
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) {
       alert("Please log in to your account to complete your purchase!");
@@ -127,16 +169,16 @@ export default function CartPage() {
 
     const customerEmail = session.user.email; 
 
-    // Validations
     if (!address) { alert("Please enter your full delivery address."); return; }
     if (pincode.length !== 6) { alert("Please enter a valid 6-digit Pincode."); return; }
-    if (!selectedCourier && !megaOfferActive) { alert("Please select a delivery partner (ST Courier, India Post, etc.)."); return; }
+    // Ensure courier is selected (unless it's a free mega offer where courier might be auto-assigned)
+    if (!selectedCourier && !megaOfferActive) { alert("Please select a delivery partner."); return; }
 
     setIsProcessing(true);
     const res = await initializeRazorpay();
 
     if (!res) {
-      alert('Razorpay failed to load. Please check your internet connection.');
+      alert('Razorpay failed to load.');
       setIsProcessing(false);
       return;
     }
@@ -148,16 +190,9 @@ export default function CartPage() {
         body: JSON.stringify({ amount: finalTotal }),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `Server responded with status ${response.status}`);
-      }
+      if (!response.ok) throw new Error('Payment initialization failed');
 
       const data = await response.json();
-
-      if (!data.orderId) {
-        throw new Error('Backend did not return an Order ID.');
-      }
 
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
@@ -181,12 +216,7 @@ export default function CartPage() {
             status: 'Paid & Processing'
           }]);
 
-          if (error) {
-            console.error("Supabase Error:", error);
-            alert("Payment successful, but we had trouble saving the order details. Please contact support.");
-          } else {
-            
-            // 🚀 BRAND NEW: Save the exact order details temporarily for the WhatsApp Success Page!
+          if (!error) {
             localStorage.setItem('lastOrder', JSON.stringify({
               paymentId: paymentResponse.razorpay_payment_id,
               address: address,
@@ -195,9 +225,7 @@ export default function CartPage() {
               items: cartItems,
               total: finalTotal
             }));
-
             clearCart(); 
-            // Send them directly to the new Digital Receipt / WhatsApp page!
             window.location.href = `/success?payment_id=${paymentResponse.razorpay_payment_id}`; 
           }
         },
@@ -216,7 +244,7 @@ export default function CartPage() {
         setIsProcessing(false);
       });
     } catch (error: any) {
-      console.error("Checkout Catch Error:", error);
+      console.error("Checkout Error:", error);
       alert(`Checkout Error: ${error.message}`);
     } finally {
       setIsProcessing(false);
@@ -263,6 +291,8 @@ export default function CartPage() {
                       <div>
                         <h3 className="font-bold text-sm uppercase tracking-tight text-black truncate max-w-[150px] sm:max-w-none">{item.name}</h3>
                         <p className="text-[10px] text-gray-500 uppercase tracking-widest mt-1">{item.category}</p>
+                        {/* Show Item Weight */}
+                        <p className="text-[10px] text-gray-400 mt-1 flex items-center gap-1"><Package className="w-3 h-3"/> {(item.weight || 0.5)} kg</p>
                       </div>
                       <button onClick={() => removeItem(item.id)} className="p-2 text-gray-400 hover:text-red-600 transition">
                         <Trash2 className="w-4 h-4" />
@@ -271,19 +301,9 @@ export default function CartPage() {
                     
                     <div className="flex justify-between items-center mt-4">
                       <div className="flex items-center border border-gray-200 rounded-full overflow-hidden">
-                        <button 
-                          onClick={() => updateQuantity(item.id, item.quantity - 1)}
-                          className="p-2 hover:bg-gray-100 transition"
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
+                        <button onClick={() => updateQuantity(item.id, item.quantity - 1)} className="p-2 hover:bg-gray-100 transition"><Minus className="w-3 h-3" /></button>
                         <span className="px-4 text-xs font-bold">{item.quantity}</span>
-                        <button 
-                          onClick={() => updateQuantity(item.id, item.quantity + 1)}
-                          className="p-2 hover:bg-gray-100 transition"
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
+                        <button onClick={() => updateQuantity(item.id, item.quantity + 1)} className="p-2 hover:bg-gray-100 transition"><Plus className="w-3 h-3" /></button>
                       </div>
                       <span className="font-extrabold text-lg text-black">₹{item.price * item.quantity}</span>
                     </div>
@@ -300,6 +320,10 @@ export default function CartPage() {
                   <span>Subtotal ({totalItems} items)</span>
                   <span>₹{subtotal}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span>Total Weight</span>
+                  <span>{totalWeight.toFixed(2)} kg</span>
+                </div>
 
                 {megaOfferActive && (
                   <div className="flex justify-between text-green-600 font-bold bg-green-50 p-2 rounded-lg border border-green-100">
@@ -311,6 +335,7 @@ export default function CartPage() {
 
               <div className="mb-6 border-t border-b py-6 space-y-4">
                 
+                {/* 📍 ADDRESS INPUT */}
                 <div className="flex justify-between items-center">
                   <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Delivery Address</label>
                   <button 
@@ -342,23 +367,28 @@ export default function CartPage() {
                   className="w-full px-4 py-3 bg-gray-50 rounded-xl border border-gray-200 outline-none focus:ring-2 focus:ring-black transition text-center tracking-widest font-bold text-lg" 
                 />
 
-                {(isTamilNadu || isOtherState) && (
-                  <div className="space-y-2 mt-4">
+                {/* 🚚 DYNAMIC COURIER OPTIONS */}
+                {(pincode.length === 6) && (
+                  <div className="space-y-2 mt-4 animate-fadeIn">
                      <p className={`text-[10px] uppercase tracking-widest font-bold mb-2 ${isTamilNadu ? 'text-green-600' : 'text-blue-600'}`}>
                       {isTamilNadu ? 'Tamil Nadu Delivery' : 'National Delivery'}
                     </p>
                     
-                    {isTamilNadu && (
-                      <>
-                        <CourierOption label={`ST Courier ${isOver1Kg && !megaOfferActive ? '(>1kg)' : ''}`} value="ST Courier" price={stCourierPrice} selected={selectedCourier} onSelect={setSelectedCourier} isFree={megaOfferActive} />
-                        <CourierOption label="India Post" value="India Post TN" price={indiaPostTnPrice} selected={selectedCourier} onSelect={setSelectedCourier} isFree={megaOfferActive} />
-                      </>
-                    )}
-                     {isOtherState && (
-                      <>
-                        <CourierOption label="Delhivery (Fast)" value="Delhivery" price={delhiveryPrice} selected={selectedCourier} onSelect={setSelectedCourier} isFree={megaOfferActive} />
-                        <CourierOption label="India Post (Std)" value="India Post National" price={indiaPostNatPrice} selected={selectedCourier} onSelect={setSelectedCourier} isFree={megaOfferActive} />
-                      </>
+                    {shippingOptions.length > 0 ? (
+                      shippingOptions.map((option) => (
+                        <CourierOption 
+                          key={option.id}
+                          label={option.label} 
+                          desc={option.desc}
+                          value={option.id} 
+                          price={option.price} 
+                          selected={selectedCourier} 
+                          onSelect={setSelectedCourier} 
+                          isFree={megaOfferActive} 
+                        />
+                      ))
+                    ) : (
+                       <p className="text-xs text-red-500">Service not available for this Pincode.</p>
                     )}
                   </div>
                 )}
@@ -388,12 +418,15 @@ export default function CartPage() {
   );
 }
 
-function CourierOption({ label, value, price, selected, onSelect, isFree }: any) {
+function CourierOption({ label, desc, value, price, selected, onSelect, isFree }: any) {
   return (
     <label className={`flex items-center justify-between p-3 border rounded-xl cursor-pointer transition ${selected === value ? 'border-black bg-gray-50' : 'border-gray-200 hover:bg-gray-50'}`}>
       <div className="flex items-center gap-3">
         <input type="radio" name="courier" value={value} checked={selected === value} onChange={(e) => onSelect(e.target.value)} className="w-4 h-4 text-black focus:ring-black accent-black" />
-        <span className="text-xs font-bold uppercase tracking-wide">{label}</span>
+        <div>
+           <span className="text-xs font-bold uppercase tracking-wide block">{label}</span>
+           <span className="text-[10px] text-gray-500 font-medium">{desc}</span>
+        </div>
       </div>
       <span className="text-xs font-bold">
         {isFree ? <><span className="line-through text-gray-400 mr-2">₹{price}</span><span className="text-green-600">FREE</span></> : `₹${price}`}
