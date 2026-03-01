@@ -3,12 +3,16 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '../lib/supabase';
-import { Loader2 } from 'lucide-react';
+// 👈 NEW: Added XCircle for the close button
+import { Loader2, XCircle } from 'lucide-react'; 
 
 export default function HomePage() {
   const [allProducts, setAllProducts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   
+  // 🔍 NEW: State to track which model is selected (Default is 'All')
+  const [activeFilter, setActiveFilter] = useState('All'); 
+
   const [currentSlide, setCurrentSlide] = useState(0);
   
   const banners = [
@@ -17,33 +21,43 @@ export default function HomePage() {
     "https://images.unsplash.com/photo-1483985988355-763728e1935b?q=80&w=1600&auto=format&fit=crop"  
   ];
 
-  // 👗 MOVANA MODELS - NOW USING YOUR LOCAL FILES!
+  // 👗 MOVANA MODELS
   const movanaModels = [
    {
       name: "Titanic",
       desc: "The Classic Comfort Cut",
       video: "/titanic.mp4",
-      image: "/titanic.jpg" // 👈 Assuming you put a picture here!
+      image: "/titanic.jpg"
     },
     {
       name: "Zip",
       desc: "Smart & Practical",
-      video: "/zip.mp4", // 👈 Local file!
+      video: "/zip.mp4",
       image: "/zip.jpg" 
     },
     {
       name: "Frock",
       desc: "Flared Premium Comfort",
-      video: "/frock.mp4", // 👈 Local file!
+      video: "/frock.mp4",
       image: "/frock.jpg" 
     },
     {
       name: "Elastic",
       desc: "Smocked Perfect Fit",
-      video: "/elastic.mp4", // No video yet, so it uses the image below
-      image: "/elastic.jpg" // 👈 Make sure this is in your public folder!
+      video: "/elastic.mp4",
+      image: "/elastic.jpg"
     }
   ];
+
+  // 🧠 NEW SMART FILTER LOGIC
+  // This filters the products based on the name or description!
+  const filteredProducts = activeFilter === 'All' 
+    ? allProducts 
+    : allProducts.filter(product => 
+        // Checks if product name OR description contains the model name (e.g., "Titanic")
+        product.name.toLowerCase().includes(activeFilter.toLowerCase()) || 
+        (product.description && product.description.toLowerCase().includes(activeFilter.toLowerCase()))
+      );
 
   useEffect(() => {
     const slideTimer = setInterval(() => {
@@ -97,9 +111,14 @@ export default function HomePage() {
 
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
           {movanaModels.map((model, index) => (
-            <Link href="#catalogue" key={index} className="group relative rounded-3xl overflow-hidden aspect-[4/5] shadow-sm cursor-pointer block bg-black">
+            <Link 
+              href="#catalogue" 
+              key={index} 
+              // 🚨 NEW CLICK HANDLER: This sets the filter!
+              onClick={() => setActiveFilter(model.name)}
+              className="group relative rounded-3xl overflow-hidden aspect-[4/5] shadow-sm cursor-pointer block bg-black"
+            >
               
-              {/* 🧠 Smart Logic: Show Video if it exists, otherwise show the static Image! */}
               {model.video ? (
                 <video 
                   src={model.video} 
@@ -131,7 +150,23 @@ export default function HomePage() {
       <section id="catalogue" className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="text-center mb-16">
           <h2 className="text-3xl font-black uppercase tracking-widest mb-4 text-black">Latest Arrivals</h2>
-          <div className="w-24 h-1 bg-black mx-auto"></div>
+          
+          {/* 🔍 NEW: FILTER INDICATOR (Only shows when a filter is active) */}
+          {activeFilter !== 'All' && (
+            <div className="flex items-center justify-center gap-4 mt-4 animate-fadeIn">
+              <span className="text-sm font-bold uppercase tracking-widest text-gray-500">
+                Showing: <span className="text-black">{activeFilter} Models</span>
+              </span>
+              <button 
+                onClick={() => setActiveFilter('All')}
+                className="flex items-center gap-2 bg-gray-100 hover:bg-gray-200 text-xs font-bold uppercase tracking-widest px-4 py-2 rounded-full transition-all"
+              >
+                <XCircle className="w-4 h-4" /> Clear Filter
+              </button>
+            </div>
+          )}
+
+          <div className="w-24 h-1 bg-black mx-auto mt-4"></div>
         </div>
 
         {loading ? (
@@ -139,13 +174,22 @@ export default function HomePage() {
             <Loader2 className="w-10 h-10 animate-spin text-black mb-4" />
             <p className="text-xs font-bold uppercase tracking-widest text-gray-400">Loading Collection...</p>
           </div>
-        ) : allProducts.length === 0 ? (
+        ) : filteredProducts.length === 0 ? (
           <div className="text-center py-20">
-            <p className="text-gray-500 font-medium text-lg">No products available at the moment.</p>
+            <p className="text-gray-500 font-medium text-lg">
+               No products found for <strong>{activeFilter}</strong>.
+            </p>
+            {/* NEW: Button to show all if filter finds nothing */}
+            {activeFilter !== 'All' && (
+               <button onClick={() => setActiveFilter('All')} className="text-black underline mt-4 text-sm font-bold uppercase tracking-widest">
+                 Show All Products
+               </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-8">
-            {allProducts.map((product) => (
+            {/* 🚨 UPDATED: Now mapping 'filteredProducts' instead of 'allProducts' */}
+            {filteredProducts.map((product) => (
               <Link href={`/product/${product.id}`} key={product.id} className="group">
                 <div className="bg-gray-100 rounded-3xl overflow-hidden aspect-[3/4] mb-4 relative shadow-sm border border-gray-200">
                   {product.image_url ? (
