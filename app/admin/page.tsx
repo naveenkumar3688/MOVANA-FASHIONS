@@ -3,14 +3,17 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../../lib/supabase';
 import { useRouter } from 'next/navigation';
-import { Loader2, Plus, Image as ImageIcon, Trash2, LogOut, Package, Scale } from 'lucide-react';
+import { Loader2, Plus, Image as ImageIcon, Trash2, LogOut, Package, Scale, Layers } from 'lucide-react';
 
 export default function AdminPage() {
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [category, setCategory] = useState('NIGHTIES');
-  // ⚖️ NEW: Weight State (Default 0.5kg)
+  // ⚖️ Weight State (Default 0.5kg)
   const [weight, setWeight] = useState('0.5'); 
+  // 📦 NEW: Quantity State (Default 10)
+  const [quantity, setQuantity] = useState('10');
+
   const [sizesInput, setSizesInput] = useState('');
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(false);
@@ -24,7 +27,6 @@ export default function AdminPage() {
     const checkAdmin = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       
-      // Checking for your exact email!
       if (!session || session.user.email !== 'naveenkumark1206@gmail.com') {
         alert("Access Denied. Admins only.");
         router.push('/');
@@ -72,7 +74,8 @@ export default function AdminPage() {
         name,
         price: parseFloat(price),
         category,
-        weight: parseFloat(weight), // ⚖️ SAVING WEIGHT TO DB
+        weight: parseFloat(weight),
+        quantity: parseInt(quantity), // 📦 SAVING QUANTITY TO DB
         image_url: uploadedUrls[0],
         gallery_images: uploadedUrls,
         sizes: sizesArray
@@ -83,7 +86,8 @@ export default function AdminPage() {
       alert("✨ Product successfully added!");
       setName('');
       setPrice('');
-      setWeight('0.5'); // Reset weight
+      setWeight('0.5'); 
+      setQuantity('10'); // Reset Quantity
       setSizesInput(''); 
       setFiles([]);
       fetchProducts(); 
@@ -130,18 +134,23 @@ export default function AdminPage() {
                   <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Price (₹)</label>
                   <input type="number" value={price} onChange={(e) => setPrice(e.target.value)} className="w-full px-4 py-3 bg-black rounded-xl border border-gray-800 outline-none text-sm text-white focus:border-gray-500 transition" placeholder="999" />
                 </div>
-                {/* ⚖️ NEW WEIGHT INPUT */}
+                {/* ⚖️ WEIGHT INPUT */}
                 <div>
                   <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Weight (kg)</label>
+                  <input type="number" step="0.1" value={weight} onChange={(e) => setWeight(e.target.value)} className="w-full px-4 py-3 bg-black rounded-xl border border-gray-800 outline-none text-sm text-white focus:border-gray-500 transition" placeholder="0.5" />
+                </div>
+              </div>
+
+              {/* 📦 NEW QUANTITY INPUT */}
+              <div>
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Stock Quantity</label>
                   <input 
                     type="number" 
-                    step="0.1" 
-                    value={weight} 
-                    onChange={(e) => setWeight(e.target.value)} 
+                    value={quantity} 
+                    onChange={(e) => setQuantity(e.target.value)} 
                     className="w-full px-4 py-3 bg-black rounded-xl border border-gray-800 outline-none text-sm text-white focus:border-gray-500 transition" 
-                    placeholder="0.5" 
+                    placeholder="10" 
                   />
-                </div>
               </div>
 
               <div>
@@ -151,7 +160,7 @@ export default function AdminPage() {
                   <option value="INNERWEAR">Innerwear</option>
                   <option value="LOUNGEWEAR">Loungewear</option>
                   <option value="HOME ACCESSORIES">Home Accessories</option>
-                  <option value="MENSWEAR">Menswear</option> {/* Added Menswear Option too! */}
+                  <option value="MENSWEAR">Menswear</option>
                 </select>
               </div>
 
@@ -196,9 +205,13 @@ export default function AdminPage() {
                       <p className="text-xs font-bold text-white uppercase tracking-tight line-clamp-1">{product.name}</p>
                       <p className="text-[10px] text-gray-500 uppercase tracking-widest">{product.category}</p>
                       
-                      <div className="flex items-center gap-3 mt-1">
+                      <div className="flex items-center gap-4 mt-2">
                         <p className="text-sm font-black text-green-500">₹{product.price}</p>
-                        {/* ⚖️ SHOWING WEIGHT IN LIST */}
+                        {/* 📦 SHOW QUANTITY */}
+                        <p className="text-[10px] text-blue-400 font-bold flex items-center gap-1">
+                           <Layers className="w-3 h-3"/> {product.quantity || 0} left
+                        </p>
+                        {/* ⚖️ SHOW WEIGHT */}
                         <p className="text-[10px] text-gray-400 font-bold flex items-center gap-1">
                            <Scale className="w-3 h-3"/> {product.weight || 0.5} kg
                         </p>
